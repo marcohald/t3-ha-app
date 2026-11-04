@@ -9,37 +9,86 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: addon-t3-ha-app
+  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
+
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  build:
-    name: Build ${{ matrix.arch }}
+  init:
+    name: Initialize build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: ["aarch64", "amd64"]
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Extract version from config.yaml
+        id: version
+        run: |
+          version=$(sed -n 's/^version: *["'"'"']\?\([^"'"'"']*\)["'"'"']\?/\1/p' config.yaml)
+          echo "version=${version:-1.0.0}" >> "$GITHUB_OUTPUT"
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Get build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
 
-      - name: Build and Publish Add-on
-        uses: home-assistant/builder@master
+  build:
+    name: Build ${{ matrix.arch }} image
+    needs: init
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build image
+        uses: home-assistant/builder/actions/build-image@2026.09.0
         with:
-          args: |
-            --${{ matrix.arch }} \
-            --target . \
-            --image "{arch}-addon-t3-ha-app" \
-            --docker-hub "ghcr.io/marcohald" \
-            --addon
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+          labels: |
+            io.hass.type=app
+            io.hass.name=T3 Code
+            io.hass.description=AI-assisted coding terminal, T3 Code server with mobile companion app pairing, and T3 Connect remote access
+            io.hass.url=https://github.com/marcohald/t3-ha-app
+          push: "true"
+          version: ${{ needs.init.outputs.version }}
+
+  manifest:
+    name: Publish multi-arch manifest
+    needs: [init, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}

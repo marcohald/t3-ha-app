@@ -4,6 +4,15 @@ FROM ${BUILD_FROM}
 ARG BUILD_ARCH=amd64
 ARG GH_VERSION=2.62.0
 
+LABEL \
+    io.hass.version="1.0.0" \
+    io.hass.type="app" \
+    io.hass.arch="amd64|aarch64" \
+    org.opencontainers.image.title="T3 Code" \
+    org.opencontainers.image.description="AI-assisted coding terminal, T3 Code server with mobile companion app pairing, and T3 Connect remote access" \
+    org.opencontainers.image.source="https://github.com/marcohald/t3-ha-app" \
+    org.opencontainers.image.licenses="MIT"
+
 ENV DEBIAN_FRONTEND=noninteractive \
     HOME=/data \
     LANG=C.UTF-8 \
