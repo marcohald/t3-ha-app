@@ -17,30 +17,69 @@ if os.path.exists(UPLOAD_DIR):
     shutil.rmtree(UPLOAD_DIR)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-def ascii_qr_to_svg(qr_text, scale=8):
-    lines = [l for l in qr_text.splitlines() if l.strip()]
+def ascii_qr_to_svg(qr_text, scale=6, quiet_zone=2):
+    lines = [l for l in qr_text.splitlines() if any(c in l for c in ['█', '▀', '▄'])]
     if not lines:
         return ''
-    min_indent = min(len(l) - len(l.lstrip()) for l in lines)
-    trimmed = [l[min_indent:] for l in lines]
-    max_w = max(len(l) for l in trimmed)
-    h = len(trimmed) * 2
-    w = max_w
-    
+
+    # Terminal half-block characters represent 2 vertical modules:
+    # '█': top black, bottom black
+    # '▀': top black, bottom white
+    # '▄': top white, bottom black
+    # ' ': top white, bottom white
+    matrix = []
+    for line in lines:
+        row_top = []
+        row_bot = []
+        for c in line:
+            if c == '█':
+                row_top.append(1)
+                row_bot.append(1)
+            elif c == '▀':
+                row_top.append(1)
+                row_bot.append(0)
+            elif c == '▄':
+                row_top.append(0)
+                row_bot.append(1)
+            else:
+                row_top.append(0)
+                row_bot.append(0)
+        matrix.append(row_top)
+        matrix.append(row_bot)
+
+    if not any(1 in row for row in matrix):
+        return ''
+
+    # Find exact bounding box of active QR code modules
+    min_r = min(r for r in range(len(matrix)) if 1 in matrix[r])
+    max_r = max(r for r in range(len(matrix)) if 1 in matrix[r])
+    min_c = min(c for r in matrix for c in range(len(r)) if r[c] == 1)
+    max_c = max(c for r in matrix for c in range(len(r)) if r[c] == 1)
+
+    qr_h = max_r - min_r + 1
+    qr_w = max_c - min_c + 1
+    dim = max(qr_h, qr_w)
+
+    total_dim = dim + quiet_zone * 2
+    svg_size = total_dim * scale
+
     rects = []
-    for row_idx, line in enumerate(trimmed):
-        y_top = row_idx * 2
-        y_bot = row_idx * 2 + 1
-        for col_idx, char in enumerate(line):
-            x = col_idx
-            if char == '█':
-                rects.append(f'<rect x="{x*scale}" y="{y_top*scale}" width="{scale}" height="{scale*2}" fill="#000"/>')
-            elif char == '▀':
-                rects.append(f'<rect x="{x*scale}" y="{y_top*scale}" width="{scale}" height="{scale*2}" fill="#000"/>')
-            elif char == '▄':
-                rects.append(f'<rect x="{x*scale}" y="{y_bot*scale}" width="{scale}" height="{scale*2}" fill="#000"/>')
-    
-    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w*scale} {h*scale}" width="{w*scale}" height="{h*scale}"><rect width="100%" height="100%" fill="#fff"/>' + ''.join(rects) + '</svg>'
+    for r_idx, r in enumerate(range(min_r, max_r + 1)):
+        for c_idx, c in enumerate(range(min_c, max_c + 1)):
+            if c < len(matrix[r]) and matrix[r][c] == 1:
+                x = (c_idx + quiet_zone) * scale
+                y = (r_idx + quiet_zone) * scale
+                rects.append(f'<rect x="{x}" y="{y}" width="{scale}" height="{scale}" fill="#000"/>')
+
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {svg_size} {svg_size}" '
+        f'width="{svg_size}" height="{svg_size}" '
+        f'style="width: 100%; height: auto; max-width: 220px; aspect-ratio: 1 / 1; display: block;" '
+        f'shape-rendering="crispEdges">'
+        f'<rect width="100%" height="100%" fill="#fff"/>'
+        + ''.join(rects) +
+        '</svg>'
+    )
 
 _t3_connect_lock = threading.Lock()
 _t3_connect_proc = None
@@ -225,9 +264,8 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                     'app_link': app_link,
                     'token': token,
                     'expires': expires,
-                    'qr_svg': qr_svg,
-                    'raw': output
-                }).encode())
+                    'qr_svg': qr_svg
+                }, ensure_ascii=True).encode())
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
