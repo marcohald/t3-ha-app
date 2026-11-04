@@ -12,6 +12,14 @@ echo "=========================================================="
 echo "Starting T3 Code Lite Home Assistant App..."
 echo "=========================================================="
 
+# Configure reliable DNS resolvers (prevents local CoreDNS negative caching of newly minted Cloudflare Tunnels)
+if [ -w /etc/resolv.conf ]; then
+    echo "nameserver 1.1.1.1" > /tmp/resolv.conf
+    echo "nameserver 8.8.8.8" >> /tmp/resolv.conf
+    grep -E '^nameserver' /etc/resolv.conf >> /tmp/resolv.conf 2>/dev/null || true
+    cat /tmp/resolv.conf > /etc/resolv.conf 2>/dev/null || true
+fi
+
 # Persistent File Overlay System (/data/overlay -> /)
 if [ -d /data/overlay ]; then
     echo "[Overlay] Restoring persistent file overlays from /data/overlay..."
