@@ -28,7 +28,7 @@ echo "Checking for T3 CLI updates..."
 ) &
 
 # Ensure persistence and working directories exist
-mkdir -p /data/.t3 /homeassistant
+mkdir -p /data/.t3 /homeassistant /var/log/nginx /tmp/uploads
 
 # Configure readline for UTF-8 input
 cat << 'EOF' > /data/.inputrc

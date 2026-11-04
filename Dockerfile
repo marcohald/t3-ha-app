@@ -1,5 +1,4 @@
-ARG BUILD_FROM=debian:bookworm-slim
-FROM ${BUILD_FROM}
+FROM ubuntu:22.04
 
 ARG BUILD_ARCH=amd64
 ARG GH_VERSION=2.62.0
@@ -41,7 +40,7 @@ RUN case "${BUILD_ARCH}" in \
     chmod +x /usr/local/bin/gh
 
 # Setup application directories and workspace symlinks
-RUN mkdir -p /opt/t3code/html /homeassistant && \
+RUN mkdir -p /opt/t3code/html /homeassistant /var/log/nginx && \
     ln -s /config /homeassistant/config && \
     ln -s /share /homeassistant/share
 
