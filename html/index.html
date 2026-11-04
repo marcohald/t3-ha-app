@@ -93,9 +93,11 @@
     }
     
     #terminal-container {
-      flex: 1;
+      flex: 1 1 0;
+      min-height: 0 !important;
       width: 100%;
       position: relative;
+      overflow: hidden !important;
       background: var(--bg-main);
       transition: background 0.2s ease;
     }
@@ -434,15 +436,23 @@
 
     #quick-access-view {
       display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       width: 100%;
       height: 100%;
-      overflow-y: auto;
+      overflow-y: auto !important;
+      overflow-x: hidden;
       box-sizing: border-box;
       padding: 16px;
       background: var(--bg-main);
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      -webkit-overflow-scrolling: touch;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
+      z-index: 2;
     }
 
     .qa-container {
@@ -451,7 +461,8 @@
       display: flex;
       flex-direction: column;
       gap: 16px;
-      padding-bottom: 40px;
+      padding-bottom: 90px;
+      box-sizing: border-box;
     }
 
     .qa-card {
@@ -674,7 +685,9 @@
     }
     #terminal-container {
       order: 3;
-      flex: 1;
+      flex: 1 1 0;
+      min-height: 0 !important;
+      overflow: hidden !important;
       position: relative;
       z-index: 1;
     }
@@ -709,6 +722,9 @@
     }
     #app-root.toolbar-bottom #terminal-container {
       order: 3 !important;
+      flex: 1 1 0 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
     }
     #app-root.toolbar-bottom .context-menu {
       top: auto !important;
@@ -777,7 +793,7 @@
             <button onclick="runInTerminal('t3 connect publish')" class="qa-action-btn" title="Befehl direkt in die aktive Terminal-Sitzung einfügen">
               <span>⌨️</span> <span>In Terminal ausführen</span>
             </button>
-            <button onclick="executeQuickCmd('connect_status', this)" class="qa-action-btn" title="T3 Connect Details abfragen">
+            <button onclick="openT3ConnectModal()" class="qa-action-btn" title="T3 Connect Details &amp; Remote Access öffnen">
               <span>📋</span> <span>Details anzeigen</span>
             </button>
           </div>
@@ -2568,7 +2584,10 @@
     window.executeQuickCmd = async function(cmdKey, btnElem) {
       const outputElem = document.getElementById('qa-output-content');
       const box = document.getElementById('qa-output-box');
-      if (box) box.style.display = 'block';
+      if (box) {
+        box.style.display = 'block';
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
       if (outputElem) outputElem.innerText = `Befehl wird ausgeführt (${cmdKey})...\n`;
       if (btnElem) btnElem.disabled = true;
 
@@ -2588,6 +2607,9 @@
           } else {
             outputElem.innerText = JSON.stringify(data, null, 2);
           }
+        }
+        if (box) {
+          box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       } catch (err) {
         if (outputElem) outputElem.innerText = `Fehler: ${err.message}`;
