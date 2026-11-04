@@ -255,6 +255,15 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 token = token_match.group(1) if token_match else None
                 expires = expires_match.group(1) if expires_match else None
 
+                mobile_app_link = None
+                if pairing_url:
+                    encoded_url = urllib.parse.quote(pairing_url, safe='')
+                    mobile_app_link = f"t3code://connections/new?pairingUrl={encoded_url}&autoConnect=1"
+                elif app_link:
+                    mobile_app_link = app_link.replace('t3code://pair?', 't3code://connections/new?')
+                    if 'autoConnect' not in mobile_app_link:
+                        mobile_app_link += '&autoConnect=1'
+
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -262,6 +271,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                     'status': 'success',
                     'pairing_url': pairing_url,
                     'app_link': app_link,
+                    'mobile_app_link': mobile_app_link,
                     'token': token,
                     'expires': expires,
                     'qr_svg': qr_svg

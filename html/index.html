@@ -3625,13 +3625,28 @@
           }
           if (urlInput) urlInput.value = data.pairing_url || '';
           if (appLink) {
-            appLink.href = data.app_link || data.pairing_url || '#';
+            const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+            const targetLink = isMobile
+              ? (data.mobile_app_link || (data.pairing_url ? `t3code://connections/new?pairingUrl=${encodeURIComponent(data.pairing_url)}&autoConnect=1` : data.app_link))
+              : (data.mobile_app_link || data.app_link || data.pairing_url || '#');
+            appLink.href = targetLink || '#';
+            appLink.onclick = function(e) {
+              if (!targetLink || targetLink === '#') {
+                e.preventDefault();
+                return false;
+              }
+              setTimeout(() => {
+                try { window.location.href = targetLink; } catch (err) {}
+              }, 50);
+            };
           }
           if (tokenInfo) {
             tokenInfo.textContent = `Token: ${data.token || 'Active'} (Expires in 5 minutes)`;
           }
           if (statusBadge) {
-            statusBadge.textContent = '🟢 T3 Server Online on Port 3773';
+            const portMatch = data.pairing_url && data.pairing_url.match(/:(\d+)\//);
+            const activePort = portMatch ? portMatch[1] : '3774';
+            statusBadge.textContent = `🟢 T3 Server Online on Port ${activePort}`;
             statusBadge.style.color = '#3fb950';
           }
         } else {
