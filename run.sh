@@ -9,7 +9,7 @@ export T3CODE_HOME=/data/.t3
 unset GODEBUG
 
 echo "=========================================================="
-echo "Starting T3 Code Home Assistant App..."
+echo "Starting T3 Code Lite Home Assistant App..."
 echo "=========================================================="
 
 # Persistent File Overlay System (/data/overlay -> /)
@@ -37,11 +37,15 @@ set output-meta on
 set convert-meta off
 EOF
 
-# Start T3 Code Server in background on port 3773
-echo "Starting T3 Code server with 't3 serve --lan --port 3773'..."
-/usr/local/bin/t3 serve --lan --port 3773 --auto-bootstrap-project-from-cwd /homeassistant > /data/t3_serve.log 2>&1 &
+# Read configured LAN port (default 3774)
+T3_PORT=$(jq -r '.port // 3774' /data/options.json 2>/dev/null || echo "3774")
+export T3_PORT
+
+# Start T3 Code Server in background on configured LAN port
+echo "Starting T3 Code server with 't3 serve --lan --port $T3_PORT'..."
+/usr/local/bin/t3 serve --lan --port "$T3_PORT" --auto-bootstrap-project-from-cwd /homeassistant > /data/t3_serve.log 2>&1 &
 T3_PID=$!
-echo "T3 Code server process launched with PID $T3_PID."
+echo "T3 Code server process launched with PID $T3_PID on port $T3_PORT."
 
 # Configure MCP Servers for Home Assistant
 echo "Configuring MCP Servers..."
@@ -77,12 +81,12 @@ echo "T3 Code Server Status & Mobile App Pairing Info:"
 /usr/local/bin/t3 pair || true
 echo "=========================================================="
 
-# Start Python Upload & API server on port 62907
+# Start Python Upload & API server on port 62906
 python3 /opt/t3code/upload.py &
 
-# Start ttyd on port 62908 connected to attach script
-ttyd -a -b /ttyd -t copyOnSelect=true -t enableZmodem=true -t disableLeaveAlert=true -t disableResizeOverlay=true -t scrollback=10000 -p 62908 /opt/t3code/attach.sh &
+# Start ttyd on port 62905 connected to attach script
+ttyd -a -b /ttyd -t copyOnSelect=true -t enableZmodem=true -t disableLeaveAlert=true -t disableResizeOverlay=true -t scrollback=10000 -p 62905 /opt/t3code/attach.sh &
 
-# Start NGINX reverse proxy on Ingress port 62900
-echo "Starting NGINX reverse proxy on port 62900..."
+# Start NGINX reverse proxy on Ingress port 62901
+echo "Starting NGINX reverse proxy on port 62901..."
 exec nginx -c /etc/nginx/nginx.conf -g "daemon off;"

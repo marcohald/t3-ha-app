@@ -1,10 +1,10 @@
-name: "T3 Code"
-description: "Lightweight T3 Code server with mobile companion app pairing, T3 Connect remote access, and terminal"
+name: "T3 Code Lite"
+description: "Lightweight T3 Code server with mobile app pairing, T3 Connect remote access, and terminal"
 version: "1.0.0"
-slug: "t3_code"
+slug: "t3_code_lite"
 url: "https://t3.codes"
 panel_icon: "mdi:code-braces"
-panel_title: "T3 Code"
+panel_title: "T3 Code Lite"
 arch:
   - aarch64
   - amd64
@@ -14,7 +14,7 @@ hassio_role: manager
 homeassistant_api: true
 host_network: true
 ingress: true
-ingress_port: 62900
+ingress_port: 62901
 panel_admin: false
 icon: true
 logo: true
@@ -22,16 +22,18 @@ map:
   - homeassistant_config:rw
   - share:rw
 ports:
-  3773/tcp: 3773
+  3774/tcp: 3774
 ports_description:
-  3773/tcp: "T3 Code server (LAN & Mobile App Pairing)"
+  3774/tcp: "T3 Code server (LAN & Mobile App Pairing)"
 options:
+  port: 3774
   ha_token: ""
   mqtt_host: ""
   mqtt_port: "1883"
   mqtt_user: ""
   mqtt_pass: ""
 schema:
+  port: "int?"
   ha_token: "str?"
   mqtt_host: "str?"
   mqtt_port: "str?"

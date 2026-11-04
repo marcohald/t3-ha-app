@@ -177,10 +177,10 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
 
         elif parsed_path.path == '/t3_status':
-            # Check if t3 serve is listening on port 3773
+            t3_port = int(os.environ.get('T3_PORT', 3774))
             is_running = False
             try:
-                with urllib.request.urlopen('http://127.0.0.1:3773/', timeout=2) as r:
+                with urllib.request.urlopen(f'http://127.0.0.1:{t3_port}/', timeout=2) as r:
                     if r.status in (200, 301, 302, 404):
                         is_running = True
             except:
@@ -191,14 +191,15 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 'running': is_running,
-                'port': 3773
+                'port': t3_port
             }).encode())
 
         elif parsed_path.path == '/t3_restart':
+            t3_port = int(os.environ.get('T3_PORT', 3774))
             try:
-                subprocess.run(['fuser', '-k', '3773/tcp'], capture_output=True)
+                subprocess.run(['fuser', '-k', f'{t3_port}/tcp'], capture_output=True)
                 subprocess.Popen(
-                    ['/usr/local/bin/t3', 'serve', '--lan', '--port', '3773', '--auto-bootstrap-project-from-cwd', '/homeassistant'],
+                    ['/usr/local/bin/t3', 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
                     env=dict(os.environ, T3CODE_HOME='/data/.t3')
                 )
                 self.send_response(200)
@@ -338,7 +339,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
 if __name__ == "__main__":
-    PORT = 62907
+    PORT = int(os.environ.get('API_PORT', 62906))
     print(f"Starting T3 Code upload & API server on port {PORT}")
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), T3UploadHandler) as httpd:
