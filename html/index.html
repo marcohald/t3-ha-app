@@ -420,6 +420,165 @@
       color: var(--text-main); 
     }
 
+    /* Quick Access View & Tab Styles */
+    .qa-nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+    .qa-nav-tab.active {
+      color: #58a6ff !important;
+    }
+
+    #quick-access-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 16px;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .qa-container {
+      max-width: 820px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-bottom: 40px;
+    }
+
+    .qa-card {
+      background: var(--bg-bar);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: border-color 0.2s ease;
+    }
+
+    .qa-card:hover {
+      border-color: rgba(88, 166, 255, 0.35);
+    }
+
+    .qa-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 8px;
+    }
+
+    .qa-card-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      color: var(--text-main);
+    }
+
+    .qa-card-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .qa-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .qa-btn-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .qa-action-btn {
+      background: var(--bg-btn);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .qa-action-btn:hover {
+      background: var(--bg-btn-hover);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .qa-action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .qa-primary-btn {
+      background: #1f6feb !important;
+      color: white !important;
+      border: none !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 6px rgba(31, 111, 235, 0.4);
+    }
+
+    .qa-primary-btn:hover {
+      background: #388bfd !important;
+    }
+
+    .qa-danger-btn {
+      background: rgba(218, 54, 51, 0.2) !important;
+      color: #f85149 !important;
+      border: 1px solid rgba(218, 54, 51, 0.4) !important;
+    }
+
+    .qa-danger-btn:hover {
+      background: rgba(218, 54, 51, 0.3) !important;
+    }
+
+    .qa-chip {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-family: 'Fira Code', monospace;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qa-chip:hover {
+      color: var(--text-main);
+      border-color: #58a6ff;
+      background: rgba(88, 166, 255, 0.1);
+    }
+
     .footer-right .tool-btn {
       margin-left: 8px;
     }
@@ -564,7 +723,192 @@
     <button onclick="installUpdate()" data-i18n="update_btn" style="background: white; color: #238636; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">Update Now</button>
   </div>
 
-  <div id="terminal-container"></div>
+  <div id="terminal-container">
+    <div id="quick-access-view">
+      <div class="qa-container">
+        <!-- Top header / banner -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
+          <div>
+            <h2 style="margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+              <span>⚡</span> <span data-i18n="quick_access">Quick Access &amp; Befehle</span>
+            </h2>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+              Schnellzugriff auf Systemdienste, Agent-Aktivitäten &amp; Terminal-Befehle
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="qa-action-btn" onclick="refreshQuickAccessStatuses()" style="padding: 6px 12px; font-size: 11px;">
+              <span>🔄</span> <span>Aktualisieren</span>
+            </button>
+            <button class="qa-action-btn" onclick="switchSession(currentSessionId)" style="padding: 6px 12px; font-size: 11px; background: rgba(88, 166, 255, 0.15); color: #58a6ff; border-color: rgba(88, 166, 255, 0.4);">
+              <span>💻</span> <span>Zum Terminal</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. Agent Activity Publish (User Core Request) -->
+        <div class="qa-card" style="border: 1px solid rgba(88, 166, 255, 0.4); background: linear-gradient(180deg, rgba(31, 111, 235, 0.08) 0%, var(--bg-bar) 100%);">
+          <div class="qa-card-header">
+            <h3 class="qa-card-title">
+              <span>📲</span> <span data-i18n="agent_publish">Agent Publish (Push &amp; Live Activities)</span>
+            </h3>
+            <span id="qa-publish-badge" class="qa-badge" style="background: rgba(110, 118, 129, 0.15); color: #8b949e; border-color: rgba(110, 118, 129, 0.4);">
+              Prüfe Status...
+            </span>
+          </div>
+          <div class="qa-card-desc" data-i18n="agent_publish_desc">
+            Aktiviert das automatische Übertragen von Agenten-Aktivitäten, Push-Mitteilungen und interaktiven Live Activities an die mobile T3 Code App auf Ihrem Smartphone oder Tablet.
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+            <button id="qa-publish-btn" onclick="toggleAgentPublish()" class="qa-action-btn qa-primary-btn" style="font-size: 13px; padding: 10px 18px;">
+              <span>⚡</span> <span id="qa-publish-btn-text">Agent Publish aktivieren</span>
+            </button>
+            <button onclick="runInTerminal('t3 connect publish')" class="qa-action-btn" title="Befehl direkt in die aktive Terminal-Sitzung einfügen">
+              <span>⌨️</span> <span>In Terminal ausführen</span>
+            </button>
+            <button onclick="executeQuickCmd('connect_status', this)" class="qa-action-btn" title="T3 Connect Details abfragen">
+              <span>📋</span> <span>Details anzeigen</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Remote Access & Pairing -->
+        <div class="qa-card">
+          <div class="qa-card-header">
+            <h3 class="qa-card-title">
+              <span>🌐</span> <span>T3 Connect &amp; Fernzugriff</span>
+            </h3>
+            <span id="qa-tunnel-badge" class="qa-badge" style="background: rgba(110, 118, 129, 0.15); color: #8b949e; border-color: rgba(110, 118, 129, 0.4);">
+              Checking...
+            </span>
+          </div>
+          <div class="qa-card-desc">
+            Sicherer Cloudflare QUIC-Tunnel für Fernzugriff von jedem Gerät ohne Portfreigaben sowie QR-Code Koppelung für die Smartphone-App.
+          </div>
+          <div class="qa-btn-grid">
+            <button class="qa-action-btn" onclick="openT3ConnectModal()">
+              <span>🌐</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">T3 Connect Setup</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Remote Access Konfiguration</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="openT3PairModal()">
+              <span>📱</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">App koppeln</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">QR-Code &amp; Pairing Token</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="executeQuickCmd('connect_status', this)">
+              <span>🔍</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">Tunnel-Status prüfen</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">t3 connect status</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Diagnostics & Maintenance -->
+        <div class="qa-card">
+          <div class="qa-card-header">
+            <h3 class="qa-card-title">
+              <span>🛠️</span> <span>Diagnose &amp; Wartung</span>
+            </h3>
+            <span id="qa-server-badge" class="qa-badge" style="background: rgba(46, 160, 67, 0.15); color: #3fb950; border-color: rgba(46, 160, 67, 0.4);">
+              🟢 Online
+            </span>
+          </div>
+          <div class="qa-card-desc">
+            Führe Diagnosen, Integritätsprüfungen und Reparaturen des T3 Code Datenverzeichnisses aus.
+          </div>
+          <div class="qa-btn-grid">
+            <button class="qa-action-btn" onclick="executeQuickCmd('doctor', this)">
+              <span>🩺</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">T3 Doctor (Prüfung)</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Datenverzeichnis &amp; Cache prüfen</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="executeQuickCmd('doctor_fix', this)">
+              <span>🔧</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">T3 Doctor (--fix)</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Automatische Reparatur ausführen</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="executeQuickCmd('status', this)">
+              <span>📊</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">T3 Systemstatus</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Dienste &amp; Zugriffskonfiguration</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="executeQuickCmd('restart_server', this)">
+              <span>🔄</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">T3 Server Neustart</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Startet t3 serve neu</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="executeQuickCmd('version_check', this)">
+              <span>ℹ️</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">Versionsprüfung</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">t3, gh &amp; Werkzeuge</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="executeQuickCmd('tmux_sessions', this)">
+              <span>📑</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">Tmux Sitzungen</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Laufende Terminalsitzungen</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. Quick Terminal Command Injection -->
+        <div class="qa-card">
+          <div class="qa-card-header">
+            <h3 class="qa-card-title">
+              <span>💻</span> <span>Schnellbefehle für aktive Terminalsitzung</span>
+            </h3>
+          </div>
+          <div class="qa-card-desc">
+            Klicken Sie auf einen Befehl, um ihn sofort in die aktuell ausgewählte Terminalsitzung einzufügen und auszuführen:
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+            <button class="qa-chip" onclick="runInTerminal('t3 connect publish')">⚡ t3 connect publish</button>
+            <button class="qa-chip" onclick="runInTerminal('t3 connect status')">🔍 t3 connect status</button>
+            <button class="qa-chip" onclick="runInTerminal('t3 status')">📊 t3 status</button>
+            <button class="qa-chip" onclick="runInTerminal('t3 doctor')">🩺 t3 doctor</button>
+            <button class="qa-chip" onclick="runInTerminal('clear')">🧹 clear</button>
+            <button class="qa-chip" onclick="runInTerminal('git status')">🌿 git status</button>
+            <button class="qa-chip" onclick="runInTerminal('top -b -n 1 | head -n 15')">📈 top</button>
+            <button class="qa-chip" onclick="runInTerminal('tmux list-sessions')">📑 tmux ls</button>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input id="qa-custom-cmd-input" placeholder="Eigenen Befehl eingeben (z.B. t3 help, t3 triage)..." onkeydown="if(event.key==='Enter') runCustomCmdFromInput()" style="flex: 1; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); color: var(--text-main); font-family: 'Fira Code', monospace; font-size: 12px;">
+            <button onclick="runCustomCmdFromInput()" style="padding: 8px 16px; border-radius: 6px; background: #238636; color: white; border: none; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap;">Ausführen ⏎</button>
+          </div>
+        </div>
+
+        <!-- 5. Output Box -->
+        <div id="qa-output-box" class="qa-card" style="display: none; background: #111; border-color: rgba(255,255,255,0.15);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 12px; font-weight: 600; color: #58a6ff; font-family: monospace;">📟 Befehlsausgabe</span>
+            <div style="display: flex; gap: 6px;">
+              <button onclick="copyQuickOutput()" style="background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;">Kopieren</button>
+              <button onclick="clearQuickOutput()" style="background: rgba(255,255,255,0.1); border: none; color: var(--text-secondary); border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;">Schließen ✕</button>
+            </div>
+          </div>
+          <pre id="qa-output-content" style="margin: 0; padding: 10px; background: rgba(0,0,0,0.4); border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 11px; color: #c9d1d9; max-height: 250px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <div id="loader-modal">
     <div class="spinner"></div>
@@ -648,6 +992,10 @@
         <div><strong>Relay:</strong> <span id="t3-connect-relay" style="color: #58a6ff;">https://relay.t3.codes</span></div>
         <div><strong>Auth:</strong> <span id="t3-connect-auth" style="color: #8b949e;">-</span></div>
         <div><strong>Tunnel:</strong> <span id="t3-connect-tunnel" style="color: #8b949e;">-</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-color, rgba(255,255,255,0.1));">
+          <div><strong>Agent Publish:</strong> <span id="t3-connect-publish" style="color: #8b949e;">-</span></div>
+          <button id="modal-publish-toggle-btn" onclick="toggleAgentPublish()" style="background: #238636; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 11px; font-weight: bold; cursor: pointer;">Toggle</button>
+        </div>
       </div>
 
       <!-- Auth instruction / box -->
@@ -920,7 +1268,14 @@
         preparing_export: "Preparing Export...",
         starting_restore: "Starting Restore...",
         uploading_backup: "Uploading Backup...",
-        extracting_restarting: "Extracting and Restarting..."
+        extracting_restarting: "Extracting and Restarting...",
+        quick_access: "Quick Access",
+        agent_publish: "Publish Agent Activity",
+        agent_publish_desc: "Publish agent activity (push notifications & Live Activities) directly to your paired mobile devices.",
+        agent_publish_enable: "⚡ Activate Agent Publish",
+        agent_publish_disable: "✕ Disable Agent Publish",
+        agent_publish_enabled_msg: "✓ Agent Publish activated!",
+        agent_publish_disabled_msg: "✓ Agent Publish deactivated!"
       },
       es: {
         auto: "🌓 Auto",
@@ -1046,7 +1401,14 @@
         preparing_export: "Export vorbereiten...",
         starting_restore: "Wiederherstellung starten...",
         uploading_backup: "Backup hochladen...",
-        extracting_restarting: "Extrahieren und Neustarten..."
+        extracting_restarting: "Extrahieren und Neustarten...",
+        quick_access: "Quick Access",
+        agent_publish: "Agent Publish (Push & Live Activities)",
+        agent_publish_desc: "Aktiviert das automatische Übertragen von Agenten-Aktivitäten, Push-Mitteilungen und interaktiven Live Activities an die mobile T3 Code App.",
+        agent_publish_enable: "⚡ Agent Publish aktivieren",
+        agent_publish_disable: "✕ Agent Publish deaktivieren",
+        agent_publish_enabled_msg: "✓ Agent Publish aktiviert!",
+        agent_publish_disabled_msg: "✓ Agent Publish deaktiviert!"
       },
       fr: {
         auto: "🌓 Auto",
@@ -1971,7 +2333,32 @@
       return iframe;
     }
 
+    let currentView = 'terminal'; // 'terminal' | 'quick-access'
+
+    window.switchView = function(view) {
+      currentView = view;
+      const qaPanel = document.getElementById('quick-access-view');
+      if (view === 'quick-access') {
+        document.querySelectorAll('.term-iframe').forEach(f => {
+          f.style.display = 'none';
+          f.classList.remove('active');
+        });
+        if (qaPanel) {
+          qaPanel.style.display = 'block';
+          refreshQuickAccessStatuses();
+        }
+      } else {
+        if (qaPanel) qaPanel.style.display = 'none';
+        switchSession(currentSessionId);
+      }
+      renderTabs();
+    };
+
     window.switchSession = function(id) {
+      currentView = 'terminal';
+      const qaPanel = document.getElementById('quick-access-view');
+      if (qaPanel) qaPanel.style.display = 'none';
+
       currentSessionId = id;
       saveSessions();
       const iframe = ensureIframe(id);
@@ -1991,6 +2378,7 @@
     };
 
     window.createSession = function() {
+      currentView = 'terminal';
       const maxId = sessions.reduce((max, s) => Math.max(max, s.id), 0);
       const newId = maxId + 1;
       sessions.push({id: newId, name: t('session_prefix') + newId});
@@ -2022,10 +2410,18 @@
     function renderTabs() {
       const tabBar = document.getElementById('tab-bar');
       tabBar.innerHTML = '';
-      
+
+      // Dedicated Quick Access Tab
+      const qaTab = document.createElement('div');
+      qaTab.className = 'tab qa-nav-tab' + (currentView === 'quick-access' ? ' active' : '');
+      qaTab.innerHTML = `<span>⚡</span> <span>${t('quick_access') || 'Quick Access'}</span>`;
+      qaTab.onclick = () => switchView('quick-access');
+      tabBar.appendChild(qaTab);
+
+      // Terminal Session Tabs
       sessions.forEach(s => {
         const tab = document.createElement('div');
-        tab.className = 'tab' + (s.id === currentSessionId ? ' active' : '');
+        tab.className = 'tab' + (currentView === 'terminal' && s.id === currentSessionId ? ' active' : '');
         let closeHtml = sessions.length > 1 ? `<span class="tab-close" onclick="closeSession(event, ${s.id})">×</span>` : '';
         tab.innerHTML = `<span>${s.name}</span>${closeHtml}`;
         tab.onclick = () => switchSession(s.id);
@@ -2035,9 +2431,205 @@
       const addBtn = document.createElement('button');
       addBtn.className = 'tab-add';
       addBtn.innerHTML = '+';
+      addBtn.title = 'New Session';
       addBtn.onclick = createSession;
       tabBar.appendChild(addBtn);
     }
+
+    // Quick Access Helper Functions & Agent Publish Logic
+    let isPublishAgentActive = false;
+
+    window.toggleAgentPublish = async function(explicitAction) {
+      const btn = document.getElementById('qa-publish-btn');
+      const badge = document.getElementById('qa-publish-badge');
+      const modalBtn = document.getElementById('modal-publish-toggle-btn');
+      const modalBadge = document.getElementById('t3-connect-publish');
+
+      if (btn) btn.disabled = true;
+      if (modalBtn) modalBtn.disabled = true;
+
+      const act = explicitAction || 'toggle';
+      try {
+        const res = await fetch(`t3_publish?action=${act}`);
+        const data = await res.json();
+        if (data.status === 'success') {
+          isPublishAgentActive = data.enabled;
+          updatePublishUI(data.enabled);
+          showNotification(data.enabled ? (t('agent_publish_enabled_msg') || '✓ Agent Publish aktiviert!') : (t('agent_publish_disabled_msg') || '✓ Agent Publish deaktiviert!'));
+        } else {
+          showNotification('Fehler bei Agent Publish: ' + (data.message || 'Unbekannt'));
+        }
+      } catch (err) {
+        showNotification('Verbindungsfehler: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (modalBtn) modalBtn.disabled = false;
+      }
+    };
+
+    function updatePublishUI(enabled) {
+      isPublishAgentActive = enabled;
+      const btn = document.getElementById('qa-publish-btn');
+      const btnText = document.getElementById('qa-publish-btn-text');
+      const badge = document.getElementById('qa-publish-badge');
+      const modalBtn = document.getElementById('modal-publish-toggle-btn');
+      const modalBadge = document.getElementById('t3-connect-publish');
+
+      if (badge) {
+        if (enabled) {
+          badge.innerHTML = '🟢 Aktiviert (Enabled)';
+          badge.style.background = 'rgba(46, 160, 67, 0.15)';
+          badge.style.color = '#3fb950';
+          badge.style.borderColor = 'rgba(46, 160, 67, 0.4)';
+        } else {
+          badge.innerHTML = '⚪ Deaktiviert (Disabled)';
+          badge.style.background = 'rgba(110, 118, 129, 0.15)';
+          badge.style.color = '#8b949e';
+          badge.style.borderColor = 'rgba(110, 118, 129, 0.4)';
+        }
+      }
+
+      if (btn) {
+        if (enabled) {
+          if (btnText) btnText.innerText = t('agent_publish_disable') || '✕ Agent Publish deaktivieren';
+          btn.style.background = 'rgba(218, 54, 51, 0.2)';
+          btn.style.color = '#f85149';
+          btn.style.borderColor = 'rgba(218, 54, 51, 0.4)';
+        } else {
+          if (btnText) btnText.innerText = t('agent_publish_enable') || '⚡ Agent Publish aktivieren';
+          btn.style.background = '#1f6feb';
+          btn.style.color = '#ffffff';
+          btn.style.borderColor = 'transparent';
+        }
+      }
+
+      if (modalBadge) {
+        modalBadge.innerHTML = enabled ? '<span style="color:#3fb950; font-weight:bold;">enabled</span>' : '<span style="color:#8b949e;">disabled</span>';
+      }
+      if (modalBtn) {
+        modalBtn.innerHTML = enabled ? 'Disable' : 'Enable';
+        modalBtn.style.background = enabled ? '#da3633' : '#238636';
+      }
+    }
+
+    window.refreshQuickAccessStatuses = async function() {
+      // 1. Check T3 Connect & Publish status
+      try {
+        const res = await fetch('t3_connect_status');
+        const data = await res.json();
+        if (data.status === 'success') {
+          const isPub = (data.publish_agent_activity === 'enabled');
+          updatePublishUI(isPub);
+          
+          const connBadge = document.getElementById('qa-tunnel-badge');
+          if (connBadge) {
+            if (data.connected) {
+              connBadge.innerHTML = '🟢 Verbunden (QUIC)';
+              connBadge.style.background = 'rgba(46, 160, 67, 0.15)';
+              connBadge.style.color = '#3fb950';
+              connBadge.style.borderColor = 'rgba(46, 160, 67, 0.4)';
+            } else {
+              connBadge.innerHTML = '⚪ Getrennt';
+              connBadge.style.background = 'rgba(110, 118, 129, 0.15)';
+              connBadge.style.color = '#8b949e';
+              connBadge.style.borderColor = 'rgba(110, 118, 129, 0.4)';
+            }
+          }
+        }
+      } catch(e) {
+        console.error('Error fetching connect status', e);
+      }
+
+      // 2. Check T3 Server status
+      try {
+        const res = await fetch('t3_status');
+        const data = await res.json();
+        const srvBadge = document.getElementById('qa-server-badge');
+        if (srvBadge) {
+          srvBadge.innerHTML = data.running ? `🟢 Online (Port ${data.port})` : '🔴 Offline';
+          srvBadge.style.background = data.running ? 'rgba(46, 160, 67, 0.15)' : 'rgba(218, 54, 51, 0.15)';
+          srvBadge.style.color = data.running ? '#3fb950' : '#f85149';
+          srvBadge.style.borderColor = data.running ? 'rgba(46, 160, 67, 0.4)' : 'rgba(218, 54, 51, 0.4)';
+        }
+      } catch(e) {}
+    };
+
+    window.executeQuickCmd = async function(cmdKey, btnElem) {
+      const outputElem = document.getElementById('qa-output-content');
+      const box = document.getElementById('qa-output-box');
+      if (box) box.style.display = 'block';
+      if (outputElem) outputElem.innerText = `Befehl wird ausgeführt (${cmdKey})...\n`;
+      if (btnElem) btnElem.disabled = true;
+
+      try {
+        let url = `run_quick_cmd?cmd=${encodeURIComponent(cmdKey)}`;
+        if (cmdKey === 'restart_server') {
+          url = 't3_restart';
+        } else if (cmdKey === 'version_check') {
+          url = 'version_check';
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        if (outputElem) {
+          if (data.output) {
+            outputElem.innerText = `$ ${data.command || cmdKey}\n\n${data.output}`;
+          } else {
+            outputElem.innerText = JSON.stringify(data, null, 2);
+          }
+        }
+      } catch (err) {
+        if (outputElem) outputElem.innerText = `Fehler: ${err.message}`;
+      } finally {
+        if (btnElem) btnElem.disabled = false;
+      }
+    };
+
+    window.clearQuickOutput = function() {
+      const box = document.getElementById('qa-output-box');
+      const outputElem = document.getElementById('qa-output-content');
+      if (outputElem) outputElem.innerText = '';
+      if (box) box.style.display = 'none';
+    };
+
+    window.copyQuickOutput = function() {
+      const content = document.getElementById('qa-output-content');
+      if (content && content.innerText) {
+        navigator.clipboard.writeText(content.innerText);
+        showNotification(t('text_copied'));
+      }
+    };
+
+    window.runInTerminal = function(cmd) {
+      switchSession(currentSessionId);
+      showNotification('Befehl ausgeführt: ' + cmd);
+      setTimeout(() => {
+        const iframe = getActiveIframe();
+        const iframeDoc = iframe && iframe.contentWindow ? iframe.contentWindow.document : null;
+        if (!iframeDoc) return;
+        const target = iframeDoc.querySelector('.xterm-helper-textarea') || iframeDoc.querySelector('.xterm-screen');
+        if (target) {
+          const dt = new DataTransfer();
+          dt.setData('text/plain', cmd + '\r');
+          target.dispatchEvent(new ClipboardEvent('paste', {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true
+          }));
+          setTimeout(() => {
+            target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+          }, 20);
+        }
+      }, 150);
+    };
+
+    window.runCustomCmdFromInput = function() {
+      const input = document.getElementById('qa-custom-cmd-input');
+      if (!input || !input.value.trim()) return;
+      const cmd = input.value.trim();
+      input.value = '';
+      runInTerminal(cmd);
+    };
 
     // Toolbar Position (Top / Bottom) Management
     function applyToolbarPosition(pos) {
@@ -2894,6 +3486,10 @@
           relaySpan.textContent = data.relay;
           authSpan.textContent = data.authorization;
           tunnelSpan.textContent = data.connected ? '✓ Connected' : '✗ Disconnected';
+
+          if (data.publish_agent_activity) {
+            updatePublishUI(data.publish_agent_activity === 'enabled');
+          }
 
           if (data.connected) {
             badge.textContent = '✓ T3 Connect Active & Reachable';

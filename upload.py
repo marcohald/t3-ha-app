@@ -286,6 +286,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 auth_match = re.search(r'Authorization:\s*(.+)', output)
                 link_match = re.search(r'Environment link:\s*(\S+)', output)
                 relay_match = re.search(r'Relay:\s*(\S+)', output)
+                publish_match = re.search(r'Publish agent activity:\s*(\S+)', output)
                 tunnel_connected = "Tunnel connected" in output or "Other devices can reach this machine" in output
 
                 self.send_response(200)
@@ -298,9 +299,99 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                     'authorization': auth_match.group(1).strip() if auth_match else 'none',
                     'link': link_match.group(1) if link_match else 'unlinked',
                     'relay': relay_match.group(1) if relay_match else 'https://relay.t3.codes',
+                    'publish_agent_activity': publish_match.group(1).lower() if publish_match else 'disabled',
                     'raw': output
                 }).encode())
             except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+
+        elif parsed_path.path == '/t3_publish':
+            query = parse_qs(parsed_path.query)
+            action = query.get('action', ['toggle'])[0]
+            try:
+                env = dict(os.environ, T3CODE_HOME='/data/.t3')
+                if action == 'status':
+                    res = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
+                    pub_m = re.search(r'Publish agent activity:\s*(\S+)', res.stdout)
+                    is_enabled = (pub_m.group(1).lower() == 'enabled') if pub_m else False
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'status': 'success',
+                        'enabled': is_enabled,
+                        'message': 'enabled' if is_enabled else 'disabled'
+                    }).encode())
+                    return
+
+                if action == 'toggle':
+                    chk = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
+                    if 'Publish agent activity: enabled' in chk.stdout:
+                        action = 'disable'
+                    else:
+                        action = 'enable'
+
+                cmd = ['/usr/local/bin/t3', 'connect', 'publish']
+                if action == 'disable':
+                    cmd.append('--disable')
+
+                res = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=10)
+                msg = (res.stdout + res.stderr).strip()
+
+                st_res = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
+                pub_m = re.search(r'Publish agent activity:\s*(\S+)', st_res.stdout)
+                is_enabled = (pub_m.group(1).lower() == 'enabled') if pub_m else ('enabled' in msg.lower())
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'status': 'success' if res.returncode == 0 else 'error',
+                    'enabled': is_enabled,
+                    'message': msg
+                }).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+
+        elif parsed_path.path == '/run_quick_cmd':
+            query = parse_qs(parsed_path.query)
+            cmd_key = query.get('cmd', [''])[0]
+            allowed_cmds = {
+                'doctor': ['/usr/local/bin/t3', 'doctor'],
+                'doctor_fix': ['/usr/local/bin/t3', 'doctor', '--fix'],
+                'status': ['/usr/local/bin/t3', 'status'],
+                'connect_status': ['/usr/local/bin/t3', 'connect', 'status'],
+                'version': ['/usr/local/bin/t3', '--version'],
+                'tmux_sessions': ['tmux', 'list-sessions'],
+            }
+            if cmd_key in allowed_cmds:
+                try:
+                    env = dict(os.environ, T3CODE_HOME='/data/.t3')
+                    res = subprocess.run(allowed_cmds[cmd_key], env=env, capture_output=True, text=True, timeout=20)
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'status': 'success',
+                        'command': ' '.join(allowed_cmds[cmd_key]),
+                        'output': res.stdout + res.stderr
+                    }).encode())
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+            else:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"status": "error", "message": "Command not allowed"}')
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
