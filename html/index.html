@@ -866,7 +866,42 @@
           </div>
         </div>
 
-        <!-- 4. Diagnostics & Maintenance -->
+        <!-- 4. T3 Account & Headless Login -->
+        <div class="qa-card">
+          <div class="qa-card-header">
+            <h3 class="qa-card-title">
+              <span>👤</span> <span>T3 Account &amp; Headless Login</span>
+            </h3>
+            <span id="qa-account-badge" class="qa-badge" style="background: rgba(110, 118, 129, 0.15); color: #8b949e; border-color: rgba(110, 118, 129, 0.4);">
+              Prüfe Status...
+            </span>
+          </div>
+          <div class="qa-card-desc">
+            Melden Sie sich headless (ohne lokalen Browser) mit Ihrem T3-Konto an. Dies verknüpft diese Maschine sicher mit Ihrem Account für T3 Connect Fernzugriff und Push-Benachrichtigungen.
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px;">
+            <button id="qa-account-login-btn" onclick="triggerHeadlessLogin()" class="qa-action-btn qa-primary-btn" style="font-size: 13px; padding: 10px 18px;">
+              <span>🔑</span> <span id="qa-account-btn-text">Headless Login starten</span>
+            </button>
+            <button onclick="runInTerminal('t3 connect login --headless')" class="qa-action-btn" title="Befehl 't3 connect login --headless' im Terminal ausführen">
+              <span>⌨️</span> <span>login --headless im Terminal</span>
+            </button>
+            <button onclick="logoutAccount()" class="qa-action-btn" style="color: #f85149;" title="Von T3 Account abmelden">
+              <span>🚪</span> <span>Abmelden</span>
+            </button>
+            <button onclick="refreshAccountStatus()" class="qa-action-btn" title="Account-Status aktualisieren">
+              <span>🔄</span> <span>Status prüfen</span>
+            </button>
+          </div>
+          <div id="qa-account-auth-box" style="display: none; background: rgba(31, 111, 235, 0.15); border: 1px solid #1f6feb; border-radius: 8px; padding: 12px; font-size: 12px; text-align: center; margin-top: 12px;">
+            <div style="font-weight: bold; margin-bottom: 6px;">Sign-In auf beliebigem Gerät bestätigen:</div>
+            <div id="qa-account-code-display" style="font-size: 20px; font-family: monospace; font-weight: bold; color: #58a6ff; letter-spacing: 2px; margin: 8px 0;"></div>
+            <a id="qa-account-auth-link" href="#" target="_blank" style="display: inline-block; background: #1f6feb; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 12px; margin-top: 4px;">🔗 Autorisierungsseite öffnen ↗</a>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">Nach Bestätigung im Browser wird der Account automatisch verknüpft.</div>
+          </div>
+        </div>
+
+        <!-- 5. Diagnostics & Maintenance -->
         <div class="qa-card">
           <div class="qa-card-header">
             <h3 class="qa-card-title">
@@ -944,6 +979,8 @@
             <button class="qa-chip" onclick="runInTerminal('git status')">🌿 git status</button>
             <button class="qa-chip" onclick="runInTerminal('top -b -n 1 | head -n 15')">📈 top</button>
             <button class="qa-chip" onclick="runInTerminal('tmux list-sessions')">📑 tmux ls</button>
+            <button class="qa-chip" onclick="runInTerminal('t3 connect login --headless')">🔑 login --headless</button>
+            <button class="qa-chip" onclick="runInTerminal('t3 connect logout')">🚪 logout</button>
           </div>
           <div style="display: flex; gap: 8px;">
             <input id="qa-custom-cmd-input" placeholder="Eigenen Befehl eingeben (z.B. t3 help, t3 triage)..." onkeydown="if(event.key==='Enter') runCustomCmdFromInput()" style="flex: 1; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); color: var(--text-main); font-family: 'Fira Code', monospace; font-size: 12px;">
@@ -1066,8 +1103,9 @@
         💡 To authorize remote access, click <b>Enable T3 Connect</b> or run <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #fff;">t3 connect link</code> in the terminal.
       </div>
 
-      <div style="display: flex; gap: 8px; justify-content: center;">
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
         <button onclick="refreshT3Connect()" style="background: var(--bg-btn, #2a2b2e); border: 1px solid var(--border-color, #444); color: var(--text-main, #fff); border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; cursor: pointer;">🔄 Refresh</button>
+        <button onclick="triggerHeadlessLogin()" style="background: rgba(31, 111, 235, 0.2); border: 1px solid #1f6feb; color: #58a6ff; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; cursor: pointer;">🔑 Headless Login</button>
         <button onclick="linkT3Connect()" style="background: #1f6feb; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; cursor: pointer;">🚀 Enable T3 Connect</button>
       </div>
     </div>
@@ -2616,6 +2654,9 @@
 
       // 3. Check T3 LAN status
       window.refreshLanStatus();
+
+      // 4. Check T3 Account status
+      window.refreshAccountStatus();
     };
 
     window.toggleLanAccess = async function(explicitAction) {
@@ -2701,6 +2742,105 @@
           updateLanUI(data.enabled === true);
         }
       } catch(e) {}
+    };
+
+    let accountPollTimer = null;
+
+    window.refreshAccountStatus = async function() {
+      const badge = document.getElementById('qa-account-badge');
+      const btn = document.getElementById('qa-account-btn-text');
+      const authBox = document.getElementById('qa-account-auth-box');
+
+      try {
+        const res = await fetch('t3_account?action=status');
+        const data = await res.json();
+        if (data.status === 'signed_in') {
+          if (badge) {
+            badge.innerHTML = `🟢 Angemeldet (${data.email})`;
+            badge.style.background = 'rgba(46, 160, 67, 0.15)';
+            badge.style.color = '#3fb950';
+            badge.style.borderColor = 'rgba(46, 160, 67, 0.4)';
+          }
+          if (btn) btn.innerText = 'Account wechseln (Login)';
+          if (authBox) authBox.style.display = 'none';
+          if (accountPollTimer) {
+            clearInterval(accountPollTimer);
+            accountPollTimer = null;
+          }
+        } else {
+          if (badge) {
+            badge.innerHTML = '⚪ Nicht angemeldet';
+            badge.style.background = 'rgba(110, 118, 129, 0.15)';
+            badge.style.color = '#8b949e';
+            badge.style.borderColor = 'rgba(110, 118, 129, 0.4)';
+          }
+          if (btn) btn.innerText = 'Headless Login starten';
+        }
+      } catch (e) {
+        if (badge) badge.innerHTML = 'Status unbekannt';
+      }
+    };
+
+    window.triggerHeadlessLogin = async function() {
+      const badge = document.getElementById('qa-account-badge');
+      const authBox = document.getElementById('qa-account-auth-box');
+      const codeDisplay = document.getElementById('qa-account-code-display');
+      const authLink = document.getElementById('qa-account-auth-link');
+
+      const modalAuthBox = document.getElementById('t3-connect-auth-box');
+      const modalCodeDisplay = document.getElementById('t3-connect-code-display');
+      const modalAuthLink = document.getElementById('t3-connect-auth-link');
+
+      if (badge) badge.textContent = '⏳ Headless Login wird initialisiert...';
+
+      try {
+        const res = await fetch('t3_account?action=login');
+        const data = await res.json();
+
+        if (data.status === 'already_signed_in') {
+          showNotification(`Bereits angemeldet als ${data.email}!`);
+          window.refreshAccountStatus();
+          return;
+        }
+
+        if (data.status === 'auth_required' || data.url) {
+          if (authBox && codeDisplay && authLink) {
+            authBox.style.display = 'block';
+            authBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            codeDisplay.textContent = data.code || 'Code im Browser prüfen';
+            authLink.href = data.url;
+          }
+          if (modalAuthBox && modalCodeDisplay && modalAuthLink) {
+            modalAuthBox.style.display = 'block';
+            modalCodeDisplay.textContent = data.code || '';
+            modalAuthLink.href = data.url;
+          }
+          showNotification('Login-Link generiert! Bitte im Browser bestätigen.');
+
+          if (accountPollTimer) clearInterval(accountPollTimer);
+          accountPollTimer = setInterval(window.refreshAccountStatus, 3000);
+        } else if (data.status === 'signed_in') {
+          showNotification(`Erfolgreich angemeldet als ${data.email}!`);
+          window.refreshAccountStatus();
+        } else {
+          showNotification('Login gestartet: Bitte Terminal prüfen oder Browser-Link öffnen.');
+        }
+      } catch (err) {
+        showNotification('Fehler beim Headless Login: ' + err.message, 'error');
+      }
+    };
+
+    window.logoutAccount = async function() {
+      if (!confirm('Möchten Sie sich wirklich vom T3 Account abmelden?')) return;
+      try {
+        const res = await fetch('t3_account?action=logout');
+        const data = await res.json();
+        showNotification('Erfolgreich abgemeldet.');
+        await window.refreshAccountStatus();
+        await window.refreshQuickAccessStatuses();
+      } catch (err) {
+        showNotification('Fehler beim Abmelden: ' + err.message, 'error');
+      }
     };
 
     window.executeQuickCmd = async function(cmdKey, btnElem) {

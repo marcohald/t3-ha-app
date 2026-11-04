@@ -137,6 +137,63 @@ def _run_t3_connect_worker():
         _t3_connect_info['status'] = 'error'
         _t3_connect_info['message'] = str(e)
 
+_account_lock = threading.Lock()
+_account_proc = None
+_account_info = {
+    'status': 'idle',
+    'email': None,
+    'url': None,
+    'code': None,
+    'message': None
+}
+
+def _run_account_login_worker():
+    global _account_proc, _account_info
+    try:
+        env = dict(os.environ, HOME='/data', T3CODE_HOME='/data/.t3')
+        subprocess.run(["tmux", "send-keys", "-t", "t3_lite_1", "t3 connect login --headless", "C-m"], capture_output=True)
+
+        _account_proc = subprocess.Popen(
+            ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        for line in _account_proc.stdout:
+            line_str = line.strip()
+            if not line_str:
+                continue
+
+            signed_match = re.search(r'Signed in as\s+(\S+)', line_str)
+            if signed_match:
+                _account_info['email'] = signed_match.group(1)
+                _account_info['status'] = 'signed_in'
+                _account_info['message'] = line_str
+
+            url_match = re.search(r'(https?://\S+)', line_str)
+            if url_match and not _account_info.get('url'):
+                found_url = url_match.group(1)
+                if any(k in found_url for k in ['device', 'connect', 'clerk', 'accounts', 't3.codes']):
+                    _account_info['url'] = found_url
+                    _account_info['status'] = 'auth_required'
+
+            code_match = re.search(r'Code:\s*([A-Za-z0-9-]+)', line_str)
+            if code_match:
+                _account_info['code'] = code_match.group(1)
+
+        _account_proc.wait()
+        if _account_proc.returncode == 0:
+            if _account_info.get('status') != 'signed_in':
+                _account_info['status'] = 'signed_in'
+        else:
+            if _account_info.get('status') != 'auth_required':
+                _account_info['status'] = 'error'
+    except Exception as e:
+        _account_info['status'] = 'error'
+        _account_info['message'] = str(e)
+
 class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/upload':
@@ -479,6 +536,105 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
 
+        elif parsed_path.path == '/t3_account':
+            query = parse_qs(parsed_path.query)
+            action = query.get('action', ['status'])[0]
+            env = dict(os.environ, HOME='/data', T3CODE_HOME='/data/.t3')
+            try:
+                if action == 'status':
+                    try:
+                        res = subprocess.run(
+                            ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
+                            env=env,
+                            capture_output=True,
+                            text=True,
+                            timeout=3
+                        )
+                        signed_match = re.search(r'Signed in as\s+(\S+)', res.stdout)
+                        if signed_match:
+                            self.send_response(200)
+                            self.send_header('Content-Type', 'application/json')
+                            self.end_headers()
+                            self.wfile.write(json.dumps({
+                                'status': 'signed_in',
+                                'email': signed_match.group(1)
+                            }).encode())
+                            return
+                    except subprocess.TimeoutExpired:
+                        pass
+                    except Exception:
+                        pass
+
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'status': 'signed_out'}).encode())
+                    return
+
+                elif action == 'login':
+                    global _account_proc, _account_info
+                    try:
+                        res = subprocess.run(
+                            ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
+                            env=env,
+                            capture_output=True,
+                            text=True,
+                            timeout=3
+                        )
+                        signed_match = re.search(r'Signed in as\s+(\S+)', res.stdout)
+                        if signed_match:
+                            self.send_response(200)
+                            self.send_header('Content-Type', 'application/json')
+                            self.end_headers()
+                            self.wfile.write(json.dumps({
+                                'status': 'already_signed_in',
+                                'email': signed_match.group(1)
+                            }).encode())
+                            return
+                    except Exception:
+                        pass
+
+                    with _account_lock:
+                        if _account_proc is None or _account_proc.poll() is not None:
+                            _account_info = {'status': 'starting', 'email': None, 'url': None, 'code': None, 'message': None}
+                            t = threading.Thread(target=_run_account_login_worker, daemon=True)
+                            t.start()
+
+                    for _ in range(30):
+                        if _account_info.get('url') and _account_info.get('code'):
+                            break
+                        if _account_info.get('status') in ('signed_in', 'error'):
+                            break
+                        time.sleep(0.1)
+
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(_account_info).encode())
+                    return
+
+                elif action == 'logout':
+                    res = subprocess.run(
+                        ['/usr/local/bin/t3', 'connect', 'logout'],
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'status': 'logged_out',
+                        'message': res.stdout.strip()
+                    }).encode())
+                    return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+
         elif parsed_path.path == '/run_quick_cmd':
             query = parse_qs(parsed_path.query)
             cmd_key = query.get('cmd', [''])[0]
@@ -489,6 +645,9 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 'connect_status': ['/usr/local/bin/t3', 'connect', 'status'],
                 'version': ['/usr/local/bin/t3', '--version'],
                 'tmux_sessions': ['tmux', 'list-sessions'],
+                'login_headless': ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
+                'logout': ['/usr/local/bin/t3', 'connect', 'logout'],
+                'connect_link_headless': ['/usr/local/bin/t3', 'connect', 'link', '--headless'],
             }
             if cmd_key in allowed_cmds:
                 try:
