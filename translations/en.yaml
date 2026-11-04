@@ -1,0 +1,16 @@
+configuration:
+  ha_token:
+    name: "Home Assistant Long-Lived Access Token"
+    description: "Optional token for Home Assistant Core API domotics access via MCP."
+  mqtt_host:
+    name: "MQTT Broker Host"
+    description: "Hostname or IP of MQTT Broker (e.g. core-mosquitto) for Zigbee2MQTT MCP."
+  mqtt_port:
+    name: "MQTT Broker Port"
+    description: "Port of MQTT Broker (default: 1883)."
+  mqtt_user:
+    name: "MQTT Username"
+    description: "Username for MQTT Broker."
+  mqtt_pass:
+    name: "MQTT Password"
+    description: "Password for MQTT Broker."

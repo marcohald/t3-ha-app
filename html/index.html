@@ -1,0 +1,3011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <title>T3 Code</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+    
+    :root {
+      --bg-main: #2b2b2b;
+      --bg-bar: #141414;
+      --bg-btn: #2a2b2e;
+      --bg-btn-hover: rgba(255, 255, 255, 0.08);
+      --bg-btn-active: rgba(255, 255, 255, 0.12);
+      --text-main: #ffffff;
+      --text-secondary: #9aa0a6;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --tab-active-bg: #2b2b2b;
+      --tab-active-text: #ffffff;
+      --tab-hover-bg: #3c4043;
+      --context-menu-bg: #141414;
+      --kbd-bg: #2a2b2e;
+      --kbd-border: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="light"] {
+      --bg-main: #ffffff;
+      --bg-bar: #f6f8fa;
+      --bg-btn: #eaeef2;
+      --bg-btn-hover: #d0d7de;
+      --bg-btn-active: #afb8c1;
+      --text-main: #1f2328;
+      --text-secondary: #656d76;
+      --border-color: #d0d7de;
+      --tab-active-bg: #ffffff;
+      --tab-active-text: #1f2328;
+      --tab-hover-bg: #e4e7eb;
+      --context-menu-bg: #f6f8fa;
+      --kbd-bg: #eaeef2;
+      --kbd-border: #d0d7de;
+    }
+
+    .speaking {
+      background: #1f6feb !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 10px rgba(31, 111, 235, 0.6) !important;
+      animation: pulse-speaker 1.2s infinite ease-in-out;
+    }
+    @keyframes pulse-speaker {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    .auth-active {
+      background: #1f6feb !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 12px rgba(31, 111, 235, 0.8) !important;
+      animation: pulse-auth 1.4s infinite ease-in-out !important;
+    }
+    @keyframes pulse-auth {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      max-width: 100vw;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #app-root {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      max-width: 100vw;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-sizing: border-box;
+      background: var(--bg-main);
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    
+    #terminal-container {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      background: var(--bg-main);
+      transition: background 0.2s ease;
+    }
+    
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background: var(--bg-main);
+    }
+    
+    #footer {
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-bar);
+      border-top: none;
+      flex-shrink: 0;
+      box-shadow: none;
+      position: relative;
+      z-index: 9999;
+      overflow-x: auto !important;
+      overflow-y: visible !important;
+      gap: 8px;
+      width: 100%;
+      max-width: 100vw;
+      box-sizing: border-box;
+      transition: background 0.2s ease;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    #footer::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .footer-left {
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+    
+    .footer-center {
+      display: flex;
+      gap: 4px;
+      flex: 1 1 auto;
+      justify-content: center;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 2px;
+    }
+    .footer-center::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .footer-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 0 0 auto;
+    }
+
+    .tool-btn {
+      background: var(--bg-btn);
+      border: none;
+      color: var(--text-secondary);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      padding: 0;
+      transition: background 0.15s, color 0.15s, transform 0.1s;
+      touch-action: manipulation;
+    }
+    
+    .tool-btn:hover {
+      background: var(--bg-btn-hover);
+      color: var(--text-main);
+    }
+    
+    .tool-btn:active {
+      background: var(--bg-btn-active);
+      transform: scale(0.92);
+    }
+    
+    #upload-btn {
+      background: var(--bg-btn);
+      color: var(--text-secondary);
+      border: none;
+      padding: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s, transform 0.1s;
+    }
+    
+    #upload-btn:hover {
+      background: var(--bg-btn-hover);
+      color: var(--text-main);
+    }
+    
+    #upload-btn:active {
+      background: var(--bg-btn-active);
+      transform: scale(0.92);
+    }
+    
+    #upload-btn:disabled {
+      background: #1a1a1a;
+      color: #555555;
+      cursor: not-allowed;
+    }
+    
+    .context-menu {
+      position: absolute;
+      bottom: 60px;
+      left: 12px;
+      background: var(--context-menu-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 100;
+      flex-direction: column;
+    }
+    
+    .context-menu.show {
+      display: flex;
+    }
+    
+    .context-menu-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 8px;
+    }
+    
+    .context-menu .tool-btn {
+      width: auto;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--bg-btn);
+      color: var(--text-main);
+    }
+    
+    /* Overlay that shows notifications/messages to the user */
+    #notification {
+      position: absolute;
+      top: 95px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f6feb;
+      color: white;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 100000;
+      text-align: center;
+      max-width: 90vw;
+      white-space: pre-line;
+    }
+    
+    #notification.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #app-root.toolbar-bottom #notification {
+      top: 50px;
+    }
+
+    /* Modal Overlay for loading states */
+    #loader-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    #loader-modal.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+    
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    #loader-text {
+      color: white;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-align: center;
+    }
+
+    /* Tabs CSS */
+    #tab-bar {
+      display: flex;
+      background: var(--bg-bar);
+      border-bottom: none;
+      padding: 8px 8px 0 8px;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: none;
+      width: 100%;
+      max-width: 100vw;
+      box-sizing: border-box;
+      transition: background 0.2s ease;
+    }
+    #tab-bar::-webkit-scrollbar { display: none; }
+    
+    .tab {
+      display: flex;
+      align-items: center;
+      background: transparent;
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      margin-right: 2px;
+      border-radius: 8px 8px 0 0;
+      border: none;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      position: relative;
+      transition: background 0.15s;
+    }
+    .tab:hover:not(.active) {
+      background: var(--tab-hover-bg);
+    }
+    .tab.active {
+      background: var(--tab-active-bg);
+      color: var(--tab-active-text);
+      z-index: 2;
+    }
+    .tab.active::before,
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      width: 12px;
+      height: 12px;
+      pointer-events: none;
+    }
+    .tab.active::before {
+      left: -12px;
+      border-bottom-right-radius: 12px;
+      box-shadow: 6px 6px 0 6px var(--tab-active-bg);
+    }
+    .tab.active::after {
+      right: -12px;
+      border-bottom-left-radius: 12px;
+      box-shadow: -6px 6px 0 6px var(--tab-active-bg);
+    }
+    .tab-close {
+      margin-left: 8px;
+      color: var(--text-secondary);
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 50%;
+    }
+    .tab-close:hover { 
+      background: rgba(255, 255, 255, 0.1); 
+      color: var(--text-main); 
+    }
+    
+    .tab-add {
+      background: transparent;
+      color: var(--text-secondary);
+      border: none;
+      font-size: 20px;
+      padding: 0 10px;
+      margin-left: 4px;
+      cursor: pointer;
+      border-radius: 50%;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      align-self: center;
+    }
+    .tab-add:hover { 
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main); 
+    }
+
+    .footer-right .tool-btn {
+      margin-left: 8px;
+    }
+
+    .shortcut-kbd {
+      background: var(--kbd-bg);
+      border: 1px solid var(--kbd-border);
+      border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-size: 10px;
+      color: var(--text-secondary);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+    }
+
+    @media (max-width: 480px) {
+      .desktop-only-text {
+        display: none !important;
+      }
+      .toolbar-footer {
+        padding: 4px;
+      }
+      .context-menu {
+        left: 4px;
+        right: 4px;
+        padding: 8px;
+        border-radius: 12px;
+      }
+      .context-menu-grid {
+        grid-template-columns: repeat(12, 1fr);
+        gap: 6px;
+      }
+      #footer {
+        padding: 6px 8px;
+        justify-content: flex-start;
+      }
+      .footer-center {
+        justify-content: flex-start;
+        gap: 2px;
+      }
+      .tool-btn {
+        width: 32px;
+        height: 32px;
+      }
+      #upload-btn {
+        width: 32px;
+        height: 32px;
+      }
+      .tab-btn {
+        margin-right: 2px !important;
+      }
+      .new-btn {
+        margin-left: 2px !important;
+      }
+      #tab-bar {
+        padding: 4px 4px 0 4px;
+      }
+      .tab {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+    }
+
+    /* Flex Ordering (Default: Toolbar TOP above tabs) */
+    #footer {
+      order: 0;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 9999;
+      overflow: visible !important;
+      border-top: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+    #tab-bar {
+      order: 1;
+      flex-shrink: 0;
+    }
+    #update-banner {
+      order: 2;
+      flex-shrink: 0;
+    }
+    #terminal-container {
+      order: 3;
+      flex: 1;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Context menu opens DOWNWARD when toolbar is at top */
+    .context-menu {
+      position: absolute;
+      top: calc(100% + 6px) !important;
+      bottom: auto !important;
+      left: 12px;
+      z-index: 10000 !important;
+    }
+    #dpad-menu {
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      top: calc(100% + 6px) !important;
+      bottom: auto !important;
+      z-index: 10000 !important;
+    }
+
+    /* User override: Toolbar BOTTOM */
+    #app-root.toolbar-bottom #footer {
+      order: 4 !important;
+      border-bottom: none !important;
+      border-top: 1px solid var(--border-color) !important;
+      position: relative !important;
+      z-index: 9999 !important;
+      overflow: visible !important;
+    }
+    #app-root.toolbar-bottom #tab-bar {
+      order: 1 !important;
+    }
+    #app-root.toolbar-bottom #terminal-container {
+      order: 3 !important;
+    }
+    #app-root.toolbar-bottom .context-menu {
+      top: auto !important;
+      bottom: calc(100% + 6px) !important;
+      left: 12px !important;
+      z-index: 10000 !important;
+    }
+    #app-root.toolbar-bottom #dpad-menu {
+      top: auto !important;
+      bottom: calc(100% + 6px) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      z-index: 10000 !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-root">
+    <div id="tab-bar"></div>
+  
+  <div id="update-banner" style="display: none; background: #238636; color: white; padding: 6px 12px; font-size: 12px; font-family: monospace; align-items: center; justify-content: space-between; border-bottom: 1px solid #2ea043; z-index: 100;">
+    <span id="update-text" data-i18n="update_available">New version available!</span>
+    <button onclick="installUpdate()" data-i18n="update_btn" style="background: white; color: #238636; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">Update Now</button>
+  </div>
+
+  <div id="terminal-container"></div>
+  
+  <div id="loader-modal">
+    <div class="spinner"></div>
+    <div id="loader-text">Loading...</div>
+    <div id="loader-progress-container" style="display:none; width: 200px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 15px; overflow: hidden;">
+      <div id="loader-progress-bar" style="width: 0%; height: 100%; background: #58a6ff; transition: width 0.2s;"></div>
+    </div>
+  </div>
+  
+  <div id="notification"></div>
+
+  <!-- Antigravity / Google Login Modal -->
+  <div id="auth-link-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 10001; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
+    <div style="background: var(--bg-bar, #1e1e1e); color: var(--text-main, #fff); border: 1px solid var(--border-color, #444); border-radius: 12px; max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); text-align: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+          <span>🔑</span> Authentication Helper
+        </h3>
+        <button onclick="closeAuthModal()" style="background: none; border: none; color: var(--text-secondary, #aaa); font-size: 20px; cursor: pointer; padding: 4px;">✕</button>
+      </div>
+
+      <div id="auth-modal-status" style="font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(31, 111, 235, 0.15); color: #58a6ff; border: 1px solid rgba(31, 111, 235, 0.4); margin-bottom: 14px; font-weight: 500;">
+        Scanning terminal for login link...
+      </div>
+
+      <div style="font-size: 12px; text-align: left; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color, #333); padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+        <div style="font-weight: bold; margin-bottom: 4px;">1. Open Login URL & Authorize</div>
+        <div style="color: var(--text-secondary, #8b949e); margin-bottom: 8px; font-size: 11px;">Sign in with your Google account in your browser and allow access.</div>
+        <div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 6px;">
+          <input id="auth-url-input" readonly placeholder="Waiting for login URL in terminal..." style="flex: 1; font-size: 11px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color, #444); color: var(--text-main, #fff); padding: 7px 8px; border-radius: 4px; font-family: monospace;">
+          <button id="copy-auth-btn" onclick="copyAuthUrlFromModal()" style="background: #238636; color: white; border: none; border-radius: 4px; padding: 0 12px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap;">Copy URL</button>
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+          <a id="open-auth-link" href="#" target="_blank" style="font-size: 11px; color: #58a6ff; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+            <span>🌐 Open Login Page in New Tab ↗</span>
+          </a>
+        </div>
+
+        <div id="device-code-box" style="display: none; background: rgba(46, 160, 67, 0.15); border: 1px solid rgba(46, 160, 67, 0.4); padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;">
+          <div style="font-size: 11px; color: #3fb950; font-weight: bold; margin-bottom: 2px;">Verification Code:</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="device-code-text" style="font-family: monospace; font-size: 14px; font-weight: bold; letter-spacing: 1px; color: #fff;"></span>
+            <button onclick="copyDeviceCode()" style="background: rgba(255,255,255,0.15); border: none; color: #fff; border-radius: 4px; padding: 3px 8px; font-size: 10px; cursor: pointer;">Copy Code</button>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color, rgba(255,255,255,0.1)); padding-top: 10px; margin-top: 10px;">
+          <div style="font-weight: bold; margin-bottom: 4px;">2. Paste Google Authorization Code</div>
+          <div style="color: var(--text-secondary, #8b949e); margin-bottom: 8px; font-size: 11px;">Paste the code returned by Google to complete sign-in:</div>
+          <div style="display: flex; gap: 6px;">
+            <input id="auth-code-input" placeholder="Paste code (e.g. 4/0A...)" style="flex: 1; font-size: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color, #444); color: var(--text-main, #fff); padding: 7px 8px; border-radius: 4px; font-family: monospace;">
+            <button onclick="submitAuthCodeToTerminal()" style="background: #1f6feb; color: white; border: none; border-radius: 4px; padding: 0 14px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap;">Submit ⏎</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button onclick="refreshAuthModal()" style="background: var(--bg-btn, #2a2b2e); border: 1px solid var(--border-color, #444); color: var(--text-main, #fff); border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer;">🔄 Re-scan Terminal</button>
+        <button onclick="closeAuthModal()" style="background: transparent; border: 1px solid var(--border-color, #444); color: var(--text-secondary, #aaa); border-radius: 6px; padding: 8px 14px; font-size: 12px; cursor: pointer;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- T3 Connect Remote Access Modal -->
+  <div id="t3-connect-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 10001; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
+    <div style="background: var(--context-menu-bg, #1e1e1e); border: 1px solid var(--border-color, #444); border-radius: 12px; width: 100%; max-width: 440px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); position: relative; text-align: center; color: var(--text-main, #fff); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+          <span>🌐</span> T3 Connect Remote Access
+        </h3>
+        <button onclick="closeT3ConnectModal()" style="background: none; border: none; color: var(--text-secondary, #aaa); font-size: 20px; cursor: pointer; padding: 4px;">✕</button>
+      </div>
+      
+      <div id="t3-connect-status-badge" style="font-size: 12px; padding: 8px 12px; border-radius: 6px; background: rgba(31, 111, 235, 0.15); color: #58a6ff; border: 1px solid rgba(31, 111, 235, 0.4); margin-bottom: 14px; font-weight: 500;">
+        Checking T3 Connect status...
+      </div>
+
+      <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color, #333); border-radius: 8px; padding: 12px; text-align: left; font-size: 12px; margin-bottom: 14px; line-height: 1.6;">
+        <div><strong>Exposure:</strong> <span id="t3-connect-exposure" style="color: #8b949e;">-</span></div>
+        <div><strong>Relay:</strong> <span id="t3-connect-relay" style="color: #58a6ff;">https://relay.t3.codes</span></div>
+        <div><strong>Auth:</strong> <span id="t3-connect-auth" style="color: #8b949e;">-</span></div>
+        <div><strong>Tunnel:</strong> <span id="t3-connect-tunnel" style="color: #8b949e;">-</span></div>
+      </div>
+
+      <div style="background: rgba(46, 160, 67, 0.1); border: 1px solid rgba(46, 160, 67, 0.3); border-radius: 8px; padding: 10px; font-size: 11px; text-align: left; margin-bottom: 14px; color: var(--text-secondary, #ccc);">
+        💡 To authorize remote access, run <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #fff;">t3 connect</code> or <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #fff;">t3 up --connect</code> in your terminal tab.
+      </div>
+
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button onclick="refreshT3Connect()" style="background: var(--bg-btn, #2a2b2e); border: 1px solid var(--border-color, #444); color: var(--text-main, #fff); border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; cursor: pointer;">🔄 Refresh</button>
+        <button onclick="linkT3Connect()" style="background: #1f6feb; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; cursor: pointer;">🚀 Enable T3 Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- T3 Code Mobile Pairing Modal -->
+  <div id="t3-pair-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); z-index: 10001; justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
+    <div style="background: var(--bg-bar, #1e1e1e); color: var(--text-main, #fff); border: 1px solid var(--border-color, #444); border-radius: 12px; max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); text-align: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+          <span>📱</span> Pair T3 Code Mobile App
+        </h3>
+        <button onclick="closeT3PairModal()" style="background: none; border: none; color: var(--text-secondary, #aaa); font-size: 20px; cursor: pointer; padding: 4px;">✕</button>
+      </div>
+      
+      <div id="t3-pair-status" style="font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4); margin-bottom: 14px; font-weight: 500;">
+        🟢 T3 Server Online on Port 3773
+      </div>
+      
+      <div id="t3-qr-container" style="background: #ffffff; padding: 12px; border-radius: 8px; display: inline-block; margin: 0 auto 12px auto; min-width: 200px; min-height: 200px;">
+        <div id="t3-qr-svg" style="display: flex; justify-content: center; align-items: center; color: #333;">Generating QR Code...</div>
+      </div>
+      
+      <div style="font-size: 12px; text-align: left; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color, #333); padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+        <div style="font-weight: bold; margin-bottom: 4px;">1. Install T3 Code Mobile</div>
+        <div style="color: var(--text-secondary, #8b949e); margin-bottom: 8px; font-size: 11px;">Available on iOS App Store and Google Play Store.</div>
+        <div style="font-weight: bold; margin-bottom: 4px;">2. Scan QR or Paste URL</div>
+        <div style="display: flex; gap: 6px; margin-top: 6px;">
+          <input id="t3-pair-url-input" readonly style="flex: 1; font-size: 11px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-color, #444); color: var(--text-main, #fff); padding: 6px 8px; border-radius: 4px; font-family: monospace;">
+          <button onclick="copyT3PairUrl()" style="background: #238636; color: white; border: none; border-radius: 4px; padding: 0 12px; font-size: 11px; font-weight: bold; cursor: pointer;">Copy</button>
+        </div>
+        <div id="t3-token-info" style="font-size: 10px; color: var(--text-secondary, #8b949e); margin-top: 6px;"></div>
+      </div>
+
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button onclick="refreshT3Token()" style="background: var(--bg-btn, #2a2b2e); border: 1px solid var(--border-color, #444); color: var(--text-main, #fff); border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; cursor: pointer;">🔄 Refresh Token</button>
+        <a id="t3-app-link" href="#" style="background: #1f6feb; color: white; text-decoration: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center;">Open in App</a>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="footer" class="toolbar-footer">
+    <div id="extra-keys-menu" class="context-menu">
+      <div class="context-menu-grid">
+        <div style="grid-column: span 12; display: flex; gap: 4px; background: rgba(0,0,0,0.15); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 2px;">
+          <button class="tool-btn theme-choice-btn" data-theme-choice="auto" onclick="setThemeMode('auto')" data-i18n="auto" style="flex: 1; font-size: 10px; padding: 4px;">🌓 Auto</button>
+          <button class="tool-btn theme-choice-btn" data-theme-choice="light" onclick="setThemeMode('light')" data-i18n="light" style="flex: 1; font-size: 10px; padding: 4px;">☀️ Light</button>
+          <button class="tool-btn theme-choice-btn" data-theme-choice="dark" onclick="setThemeMode('dark')" data-i18n="dark" style="flex: 1; font-size: 10px; padding: 4px;">🌙 Dark</button>
+        </div>
+        <button class="tool-btn copy-menu-btn" onclick="copySelection()" style="font-size: 11px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1; grid-column: span 6;">
+          <span data-i18n="copy_label" style="font-size: 8px; color: #aaa; margin-bottom: 2px; text-transform: uppercase;">Copy</span>
+          <span data-i18n="copy_text">Copy</span>
+        </button>
+        <button class="tool-btn paste-menu-btn" style="font-size: 11px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1; grid-column: span 6;">
+          <span data-i18n="paste_label" style="font-size: 8px; color: #aaa; margin-bottom: 2px; text-transform: uppercase;">Paste</span>
+          <span data-i18n="paste_text">Paste</span>
+        </button>
+        <button class="tool-btn" data-key="CtrlC" data-code="67" data-ctrl="true" style="font-size: 11px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1; grid-column: span 4;">
+          <span data-i18n="interrupt_label" style="font-size: 8px; color: #ff7b72; margin-bottom: 2px; text-transform: uppercase;">Interrupt</span>
+          <span data-i18n="interrupt_text">Ctrl+C</span>
+        </button>
+        <button class="tool-btn" data-key="CtrlZ" data-code="90" data-ctrl="true" style="font-size: 11px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1; grid-column: span 4;">
+          <span data-i18n="suspend_label" style="font-size: 8px; color: #aaa; margin-bottom: 2px; text-transform: uppercase;">Suspend</span>
+          <span data-i18n="suspend_text">Ctrl+Z</span>
+        </button>
+        <button class="tool-btn" data-key="CtrlO" data-code="79" data-ctrl="true" style="font-size: 11px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1; grid-column: span 4;">
+          <span data-i18n="expand_label" style="font-size: 8px; color: #58a6ff; margin-bottom: 2px; text-transform: uppercase;">Output</span>
+          <span data-i18n="expand_text">Ctrl+O</span>
+        </button>
+        <button class="tool-btn" data-key="PageUp" data-code="33" style="grid-column: span 6;">PgUp</button>
+        <button class="tool-btn" data-key="PageDown" data-code="34" style="grid-column: span 6;">PgDn</button>
+        <button class="tool-btn" onclick="copyAuthUrl()" style="display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; grid-column: span 6; padding: 6px; background: #1f6feb; color: white;">
+          <span data-i18n="copy_auth_label" style="font-size: 8px; color: #d4edda; text-transform: uppercase; margin-bottom: 2px;">Detect & Copy</span>
+          <span data-i18n="copy_auth_text" style="font-size: 11px; font-weight: bold;">Copy Auth Link</span>
+        </button>
+        <button class="tool-btn" onclick="toggleToolbarPosition()" style="display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; grid-column: span 6; padding: 6px;">
+          <span data-i18n="pos_label" style="font-size: 8px; color: #aaa; text-transform: uppercase; margin-bottom: 2px;">Toolbar Position</span>
+          <span style="font-size: 11px; font-weight: bold;" id="toolbar-pos-text">Top / Bottom</span>
+        </button>
+        <div style="grid-column: span 12; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 2px; margin-bottom: 2px;">
+          <span data-i18n="font_size_label" style="font-size: 10px; font-weight: bold; color: var(--text-secondary); text-transform: uppercase;">Font Size</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="tool-btn" onclick="changeFontSize(-1)" style="font-size: 11px; font-weight: bold; padding: 2px 8px; min-width: 28px; height: 26px;">A-</button>
+            <span id="font-size-display" style="font-size: 11px; font-weight: bold; min-width: 32px; text-align: center;">14px</span>
+            <button class="tool-btn" onclick="changeFontSize(1)" style="font-size: 11px; font-weight: bold; padding: 2px 8px; min-width: 28px; height: 26px;">A+</button>
+          </div>
+        </div>
+        <button class="tool-btn" onclick="exportBackup()" style="display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; grid-column: span 6; padding: 6px; background: #238636; color: white;">
+          <span data-i18n="export_label" style="font-size: 8px; color: #d4edda; text-transform: uppercase; margin-bottom: 2px;">Export</span>
+          <span data-i18n="export_text" style="font-size: 11px; font-weight: bold;">Config</span>
+        </button>
+        <button class="tool-btn" onclick="document.getElementById('import-file-input').click()" style="display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; grid-column: span 6; padding: 6px; background: #8957e5; color: white;">
+          <span data-i18n="import_label" style="font-size: 8px; color: #f2e9fc; text-transform: uppercase; margin-bottom: 2px;">Import</span>
+          <span data-i18n="import_text" style="font-size: 11px; font-weight: bold;">Config</span>
+        </button>
+        
+      <button class="tool-btn" onclick="openT3ConnectModal()" style="display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; grid-column: span 6; padding: 6px; background: #0969da; color: white;">
+        <span style="font-size: 8px; color: #d4edda; text-transform: uppercase; margin-bottom: 2px;">Remote Access</span>
+        <span style="font-size: 11px; font-weight: bold;">🌐 T3 Connect</span>
+      </button>
+      <button class="tool-btn" onclick="openT3PairModal()" style="display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; grid-column: span 12; padding: 8px; background: #1f6feb; color: white; border-radius: 6px; margin-top: 4px; border: 1px solid rgba(255,255,255,0.15);">
+          <span style="font-size: 8px; color: #d4edda; text-transform: uppercase; margin-bottom: 2px;">Mobile App Pairing</span>
+          <span style="font-size: 12px; font-weight: bold;">📱 Pair T3 Code Mobile App</span>
+        </button>
+      </div>
+    </div>
+    <input type="file" id="import-file-input" accept=".tar.gz" style="display: none;" onchange="importBackup(event)">
+
+    <div id="dpad-menu" class="context-menu" style="left: 50%; transform: translateX(-50%); padding: 8px;">
+      <div style="display: grid; grid-template-columns: 36px 36px 36px 44px; gap: 4px; justify-content: center; align-items: stretch;">
+        <div style="grid-column: 1; grid-row: 1;">
+          <button class="tool-btn" data-key="Home" data-code="36" style="width: 100%; height: 36px; font-weight: bold; font-size: 10px;">Home</button>
+        </div>
+        <div style="grid-column: 2; grid-row: 1;">
+          <button class="tool-btn" data-key="ArrowUp" data-code="38" style="width: 100%; height: 36px; padding: 0;">
+            <svg style="pointer-events: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+          </button>
+        </div>
+        <div style="grid-column: 3; grid-row: 1;">
+          <button class="tool-btn" data-key="End" data-code="35" style="width: 100%; height: 36px; font-weight: bold; font-size: 10px;">End</button>
+        </div>
+        <div style="grid-column: 4; grid-row: 1 / span 2;">
+          <button class="tool-btn" data-key="Enter" data-code="13" style="width: 100%; height: 100%; min-height: 76px; background: #238636; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; padding: 0;">
+            <svg style="pointer-events: none; margin-bottom: 3px;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>
+            <span>Enter</span>
+          </button>
+        </div>
+        <div style="grid-column: 1; grid-row: 2;">
+          <button class="tool-btn" data-key="ArrowLeft" data-code="37" style="width: 100%; height: 36px; padding: 0;">
+            <svg style="pointer-events: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+        </div>
+        <div style="grid-column: 2; grid-row: 2;">
+          <button class="tool-btn" data-key="ArrowDown" data-code="40" style="width: 100%; height: 36px; padding: 0;">
+            <svg style="pointer-events: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          </button>
+        </div>
+        <div style="grid-column: 3; grid-row: 2;">
+          <button class="tool-btn" data-key="ArrowRight" data-code="39" style="width: 100%; height: 36px; padding: 0;">
+            <svg style="pointer-events: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer-left" style="display: flex; align-items: center;">
+      <button id="main-action-btn" class="tool-btn" style="color: #ffffff; padding: 4px; flex-shrink: 0;" onclick="toggleContextMenu(event)">
+        <img src="logo.png" class="footer-logo" style="width: 24px; height: 24px; border-radius: 4px; pointer-events: none;" alt="Logo">
+      </button>
+    </div>
+    
+    <div class="footer-center">
+      <button class="tool-btn" data-key="Escape" data-code="27" style="width: auto; padding: 0 6px; font-weight: bold;">Esc</button>
+      <button class="tool-btn tab-btn" data-key="Tab" data-code="9" style="width: auto; padding: 0 8px; font-weight: bold;">Tab</button>
+      <button class="tool-btn" data-key="CtrlO" data-code="79" data-ctrl="true" style="width: auto; padding: 0 6px; margin-right: 6px; font-weight: bold; font-size: 11px; color: #58a6ff;" data-i18n-title="expand_title" title="Ctrl+O (Output Details)">^O</button>
+      <button id="auth-link-btn" class="tool-btn" onclick="openAuthModal()" style="width: auto; padding: 0 7px; font-weight: bold; font-size: 11px; color: #58a6ff; margin-right: 6px; display: inline-flex; align-items: center; gap: 3px;" title="Authentication Helper">🔑 <span id="auth-btn-label">Login</span></button>
+      
+      <button class="tool-btn" onclick="openT3ConnectModal()" style="display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2; grid-column: span 6; padding: 6px; background: #0969da; color: white;">
+        <span style="font-size: 8px; color: #d4edda; text-transform: uppercase; margin-bottom: 2px;">Remote Access</span>
+        <span style="font-size: 11px; font-weight: bold;">🌐 T3 Connect</span>
+      </button>
+      <button class="tool-btn" onclick="openT3PairModal()" style="width: auto; padding: 0 6px; font-weight: bold; font-size: 11px; color: #3fb950; margin-right: 8px;" title="Pair T3 Code Mobile App">📱 Pair</button>
+      <button id="dpad-toggle-btn" class="tool-btn" onclick="toggleDpadMenu(event)" style="padding: 0;" title="D-Pad">
+        <svg style="pointer-events: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="5 9 2 12 5 15"></polyline>
+          <polyline points="9 5 12 2 15 5"></polyline>
+          <polyline points="19 9 22 12 19 15"></polyline>
+          <polyline points="9 19 12 22 15 19"></polyline>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <line x1="12" y1="2" x2="12" y2="22"></line>
+        </svg>
+      </button>
+      <button class="tool-btn new-btn" data-cmd="/new" style="padding: 0; margin-left: 12px;" title="/new">
+        <svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><line x1="12" y1="7" x2="12" y2="13"></line><line x1="9" y1="10" x2="15" y2="10"></line></svg>
+      </button>
+      <button class="tool-btn" data-cmd="/resume" style="padding: 0;" title="/resume">
+        <svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline><polyline points="12 7 12 12 15 15"></polyline></svg>
+      </button>
+      <button class="tool-btn" data-cmd="/quota" style="padding: 0;" title="/quota">
+        <svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+      </button>
+      <button class="tool-btn" data-cmd="/model" style="padding: 0;" title="/model">
+        <svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 12 12 17 22 12"></polyline><polyline points="2 17 12 22 22 17"></polyline></svg>
+      </button>
+    </div>
+    
+    <div class="footer-right">
+      <button id="text-input-btn" class="tool-btn" onclick="promptTextInput()" title="Text / Spracheingabe" style="margin-right: 6px;">
+        <svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <line x1="9" y1="9" x2="15" y2="9"></line>
+          <line x1="9" y1="13" x2="13" y2="13"></line>
+        </svg>
+      </button>
+      <button id="tts-btn" class="tool-btn" onclick="toggleSpeakLastResponse(event)" data-i18n-title="tts_title" title="Read Last Response" style="margin-right: 6px;">
+        <svg id="tts-icon" style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+      </button>
+      <input type="file" id="file" style="display: none;" onchange="uploadImage()">
+      <button id="upload-btn" onclick="document.getElementById('file').click()" data-i18n-title="upload_title" title="Upload Image">
+        <svg style="pointer-events: none;" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+  <script>
+    // Internationalization (i18n) Engine - Default English with automatic HA/Browser localization
+    const I18N = {
+      en: {
+        auto: "🌓 Auto",
+        light: "☀️ Light",
+        dark: "🌙 Dark",
+        copy_label: "Copy",
+        copy_text: "Copy",
+        paste_label: "Paste",
+        paste_text: "Paste",
+        speak_label: "TTS",
+        speak_text: "Read Last",
+        speak_stop: "Stop",
+        interrupt_label: "Interrupt",
+        interrupt_text: "Ctrl+C",
+        suspend_label: "Suspend",
+        suspend_text: "Ctrl+Z",
+        expand_label: "Output",
+        expand_text: "Ctrl+O",
+        expand_title: "Expand / Collapse Output (Ctrl+O)",
+        copy_auth_label: "Detect & Copy",
+        copy_auth_text: "Copy Auth Link",
+        pos_label: "Toolbar Position",
+        pos_top: "⬇️ Pin Bottom",
+        pos_bottom: "⬆️ Pin Top",
+        font_size_label: "Font Size",
+        font_size_set: "Font size set to: ",
+        export_label: "Export",
+        export_text: "Config",
+        import_label: "Import",
+        import_text: "Config",
+        upload_title: "Upload Image",
+        theme_title: "Theme",
+        tts_title: "Read Last Response",
+        tts_reading: "Reading last response...",
+        tts_stopped: "Speech stopped",
+        tts_no_text: "No response found to read",
+        tts_unsupported: "Speech synthesis not supported in this browser",
+        no_term_active: "No terminal active",
+        auth_copied: "Auth Link copied to clipboard!",
+        auth_opened: "Auth link opened in new tab!",
+        no_auth_detected: "No Auth Link detected in terminal",
+        update_available: "New version available!",
+        update_btn: "Update Now",
+        updating: "Updating...",
+        update_installed: "Update installed! Please close active tabs and open new ones.",
+        text_copied: "Text copied to clipboard",
+        no_text_selected: "Select text in terminal to copy",
+        clip_blocked: "Clipboard permission blocked by browser",
+        theme_set: "Theme set to: ",
+        bar_pinned_top: "Toolbar pinned TOP (above tabs)",
+        bar_pinned_bottom: "Toolbar pinned BOTTOM",
+        session_prefix: "Session ",
+        img_inserted: "Image inserted: ",
+        path_copied: "Path copied to clipboard:\n",
+        upload_error: "Error uploading image",
+        net_failed: "Network failed during upload",
+        import_confirm: "Are you sure? This will overwrite your current T3 Code state and settings.",
+        import_success: "Backup Restored Successfully!\n\nThe Add-on will now restart automatically. Please wait a few seconds and refresh the page if it does not reload by itself.",
+        import_failed: "Import Failed: ",
+        preparing_export: "Preparing Export...",
+        starting_restore: "Starting Restore...",
+        uploading_backup: "Uploading Backup...",
+        extracting_restarting: "Extracting and Restarting..."
+      },
+      es: {
+        auto: "🌓 Auto",
+        light: "☀️ Sol/Claro",
+        dark: "🌙 Oscuro",
+        copy_label: "Copiar",
+        copy_text: "Copy",
+        paste_label: "Pegar",
+        paste_text: "Paste",
+        speak_label: "TTS",
+        speak_text: "Leer Último",
+        speak_stop: "Detener",
+        interrupt_label: "Interrumpir",
+        interrupt_text: "Ctrl+C",
+        suspend_label: "Suspender",
+        suspend_text: "Ctrl+Z",
+        expand_label: "Salida",
+        expand_text: "Ctrl+O",
+        expand_title: "Expandir / Contraer salida (Ctrl+O)",
+        copy_auth_label: "Detectar y Copiar",
+        copy_auth_text: "Copiar Auth Link",
+        pos_label: "Posición Barra",
+        pos_top: "⬇️ Fijar Abajo",
+        pos_bottom: "⬆️ Fijar Arriba",
+        font_size_label: "Tamaño Fuente",
+        font_size_set: "Tamaño de fuente: ",
+        export_label: "Exportar",
+        export_text: "Config",
+        import_label: "Importar",
+        import_text: "Config",
+        upload_title: "Subir Imagen",
+        theme_title: "Tema",
+        tts_title: "Leer última respuesta",
+        tts_reading: "Leyendo última respuesta...",
+        tts_stopped: "Lectura detenida",
+        tts_no_text: "No se encontró respuesta para leer",
+        tts_unsupported: "Síntesis de voz no compatible con este navegador",
+        no_term_active: "Ninguna terminal activa",
+        auth_copied: "¡Enlace de autenticación copiado al portapapeles!",
+        auth_opened: "¡Enlace de autenticación abierto en nueva pestaña!",
+        no_auth_detected: "No se detectó enlace de autenticación en la terminal",
+        update_available: "¡Nueva versión disponible!",
+        update_btn: "Actualizar Ahora",
+        updating: "Actualizando...",
+        update_installed: "¡Actualización instalada! Por favor, cierra las pestañas activas y abre nuevas.",
+        text_copied: "Texto copiado al portapapeles",
+        no_text_selected: "Selecciona texto en la terminal para copiar",
+        clip_blocked: "Permiso de portapapeles bloqueado",
+        theme_set: "Tema configurado a: ",
+        bar_pinned_top: "Barra fijada ARRIBA (sobre las pestañas)",
+        bar_pinned_bottom: "Barra fijada ABAJO",
+        session_prefix: "Sesión ",
+        img_inserted: "Imagen insertada: ",
+        path_copied: "¡Ruta copiada al portapapeles!\n",
+        upload_error: "Error al subir imagen",
+        net_failed: "Fallo de red durante la subida",
+        import_confirm: "¿Estás seguro? Esto sobrescribirá la configuración actual de T3 Code.",
+        import_success: "¡Copia restaurada con éxito!\n\nEl Add-on se reiniciará automáticamente. Por favor, espera unos segundos y recarga la página.",
+        import_failed: "Fallo al importar: ",
+        preparing_export: "Preparando exportación...",
+        starting_restore: "Iniciando restauración...",
+        uploading_backup: "Subiendo copia de seguridad...",
+        extracting_restarting: "Extrayendo y reiniciando..."
+      },
+      de: {
+        auto: "🌓 Auto",
+        light: "☀️ Hell",
+        dark: "🌙 Dunkel",
+        copy_label: "Kopieren",
+        copy_text: "Copy",
+        paste_label: "Einfügen",
+        paste_text: "Paste",
+        speak_label: "TTS",
+        speak_text: "Vorlesen",
+        speak_stop: "Stopp",
+        interrupt_label: "Abbrechen",
+        interrupt_text: "Ctrl+C",
+        suspend_label: "Anhalten",
+        suspend_text: "Ctrl+Z",
+        expand_label: "Output",
+        expand_text: "Strg+O",
+        expand_title: "Output Details auf-/zuklappen (Strg+O)",
+        copy_auth_label: "Erkennen & Kopieren",
+        copy_auth_text: "Auth-Link kopieren",
+        pos_label: "Leistenposition",
+        pos_top: "⬇️ Unten fixieren",
+        pos_bottom: "⬆️ Oben fixieren",
+        font_size_label: "Schriftgröße",
+        font_size_set: "Schriftgröße eingestellt auf: ",
+        export_label: "Exportieren",
+        export_text: "Konfig",
+        import_label: "Importieren",
+        import_text: "Konfig",
+        upload_title: "Bild hochladen",
+        theme_title: "Design",
+        tts_title: "Letzte Antwort vorlesen",
+        tts_reading: "Lese letzte Antwort vor...",
+        tts_stopped: "Sprachausgabe gestoppt",
+        tts_no_text: "Keine Antwort zum Vorlesen gefunden",
+        tts_unsupported: "Sprachausgabe in diesem Browser nicht unterstützt",
+        no_term_active: "Kein Terminal aktiv",
+        auth_copied: "Auth-Link in die Zwischenablage kopiert!",
+        auth_opened: "Auth-Link im neuen Tab geöffnet!",
+        no_auth_detected: "Kein Auth-Link im Terminal erkannt",
+        update_available: "Neue Version verfügbar!",
+        update_btn: "Jetzt aktualisieren",
+        updating: "Wird aktualisiert...",
+        update_installed: "Update installiert! Bitte aktive Tabs schließen und neu öffnen.",
+        text_copied: "Text in Zwischenablage kopiert",
+        no_text_selected: "Text im Terminal zum Kopieren markieren",
+        clip_blocked: "Zugriff auf die Zwischenablage blockiert",
+        theme_set: "Design eingestellt auf: ",
+        bar_pinned_top: "Leiste OBEN fixiert (über Tabs)",
+        bar_pinned_bottom: "Leiste UNTEN fixiert",
+        session_prefix: "Sitzung ",
+        img_inserted: "Bild eingefügt: ",
+        path_copied: "Pfad in die Zwischenablage kopiert!\n",
+        upload_error: "Fehler beim Hochladen des Bildes",
+        net_failed: "Netzwerkfehler beim Hochladen",
+        import_confirm: "Sind Sie sicher? Dadurch werden der aktuelle Speicher, Konversationen und Konfigurationen überschrieben.",
+        import_success: "Sicherung erfolgreich wiederhergestellt!\n\nDas Add-on wird neu gestartet.",
+        import_failed: "Import fehlgeschlagen: ",
+        preparing_export: "Export vorbereiten...",
+        starting_restore: "Wiederherstellung starten...",
+        uploading_backup: "Backup hochladen...",
+        extracting_restarting: "Extrahieren und Neustarten..."
+      },
+      fr: {
+        auto: "🌓 Auto",
+        light: "☀️ Clair",
+        dark: "🌙 Sombre",
+        copy_label: "Copier",
+        copy_text: "Copy",
+        paste_label: "Coller",
+        paste_text: "Paste",
+        speak_label: "TTS",
+        speak_text: "Lire dernier",
+        speak_stop: "Arrêter",
+        interrupt_label: "Interrompre",
+        interrupt_text: "Ctrl+C",
+        suspend_label: "Suspendre",
+        suspend_text: "Ctrl+Z",
+        expand_label: "Sortie",
+        expand_text: "Ctrl+O",
+        expand_title: "Développer / Réduire sortie (Ctrl+O)",
+        copy_auth_label: "Détecter & Copier",
+        copy_auth_text: "Copier lien Auth",
+        pos_label: "Position Barre",
+        pos_top: "⬇️ Fixer en bas",
+        pos_bottom: "⬆️ Fixer en haut",
+        font_size_label: "Taille Police",
+        font_size_set: "Taille de police : ",
+        export_label: "Exporter",
+        export_text: "Config",
+        import_label: "Importer",
+        import_text: "Config",
+        upload_title: "Téléverser image",
+        theme_title: "Thème",
+        tts_title: "Lire la dernière réponse",
+        tts_reading: "Lecture de la dernière réponse...",
+        tts_stopped: "Lecture arrêtée",
+        tts_no_text: "Aucune réponse trouvée à lire",
+        tts_unsupported: "Synthèse vocale non supportée par ce navigateur",
+        no_term_active: "Aucun terminal actif",
+        auth_copied: "Lien d'authentification copié !",
+        auth_opened: "Lien d'authentification ouvert dans un nouvel onglet !",
+        no_auth_detected: "Aucun lien d'authentification détecté dans le terminal",
+        update_available: "Nouvelle version disponible !",
+        update_btn: "Mettre à jour",
+        updating: "Mise à jour...",
+        update_installed: "Mise à jour installée ! Veuillez fermer les onglets actifs et en ouvrir de nouveaux.",
+        text_copied: "Texte copié dans le presse-papier",
+        no_text_selected: "Sélectionnez du texte à copier",
+        clip_blocked: "Accès au presse-papier bloqué",
+        theme_set: "Thème défini sur : ",
+        bar_pinned_top: "Barre fixée EN HAUT (au-dessus des onglets)",
+        bar_pinned_bottom: "Barre fixée EN BAS",
+        session_prefix: "Session ",
+        img_inserted: "Image insérée : ",
+        path_copied: "Chemin copié dans le presse-papier !\n",
+        upload_error: "Erreur lors du téléversement de l'image",
+        net_failed: "Échec réseau lors du téléversement",
+        import_confirm: "Êtes-vous sûr ? Cela écrasera la mémoire, les conversations et les configurations actuelles.",
+        import_success: "Sauvegarde restaurée avec succès !\n\nL'Add-on va redémarrer automatiquement.",
+        import_failed: "Échec de l'importation : ",
+        preparing_export: "Préparation de l'exportation...",
+        starting_restore: "Démarrage de la restauration...",
+        uploading_backup: "Téléversement de la sauvegarde...",
+        extracting_restarting: "Extraction et redémarrage..."
+      },
+      it: {
+        auto: "🌓 Auto",
+        light: "☀️ Chiaro",
+        dark: "🌙 Scuro",
+        copy_label: "Copia",
+        copy_text: "Copy",
+        paste_label: "Incolla",
+        paste_text: "Paste",
+        speak_label: "TTS",
+        speak_text: "Leggi ultimo",
+        speak_stop: "Ferma",
+        interrupt_label: "Interrompi",
+        interrupt_text: "Ctrl+C",
+        suspend_label: "Sospendi",
+        suspend_text: "Ctrl+Z",
+        expand_label: "Output",
+        expand_text: "Ctrl+O",
+        expand_title: "Espandi / Riduci output (Ctrl+O)",
+        copy_auth_label: "Rileva & Copia",
+        copy_auth_text: "Copia link Auth",
+        pos_label: "Posizione Barra",
+        pos_top: "⬇️ Fissa in basso",
+        pos_bottom: "⬆️ Fissa in alto",
+        font_size_label: "Dimensione Font",
+        font_size_set: "Dimensione font: ",
+        export_label: "Esporta",
+        export_text: "Config",
+        import_label: "Importa",
+        import_text: "Config",
+        upload_title: "Carica immagine",
+        theme_title: "Tema",
+        tts_title: "Leggi ultima risposta",
+        tts_reading: "Lettura dell'ultima risposta...",
+        tts_stopped: "Lettura interrotta",
+        tts_no_text: "Nessuna risposta trovata da leggere",
+        tts_unsupported: "Sintesi vocale non supportata da questo browser",
+        no_term_active: "Nessun terminale attivo",
+        auth_copied: "Link di autenticazione copiato negli appunti!",
+        auth_opened: "Link di autenticazione aperto in una nuova scheda!",
+        no_auth_detected: "Nessun link di autenticazione rilevato nel terminale",
+        update_available: "Nuova versione disponible!",
+        update_btn: "Aggiorna ora",
+        updating: "Aggiornamento in corso...",
+        update_installed: "Aggiornamento installato! Chiudi le schede attive e aprine di nuove.",
+        text_copied: "Testo copiato negli appunti",
+        no_text_selected: "Seleziona il testo da copiare",
+        clip_blocked: "Permesso appunti bloccato",
+        theme_set: "Tema impostato su: ",
+        bar_pinned_top: "Barra fissata IN ALTO (sopra le schede)",
+        bar_pinned_bottom: "Barra fissata IN BASSO",
+        session_prefix: "Sessione ",
+        img_inserted: "Immagine inserita: ",
+        path_copied: "Percorso copiato negli appunti!\n",
+        upload_error: "Errore durante il caricamento dell'immagine",
+        net_failed: "Errore di rete durante il caricamento",
+        import_confirm: "Sei sicuro? Questo sovrascriverà la memoria corrente, le conversazioni e le configurazioni.",
+        import_success: "Backup ripristinato con successo!\n\nL'Add-on si riavvierà automaticamente.",
+        import_failed: "Importazione non riuscita: ",
+        preparing_export: "Preparazione esportazione...",
+        starting_restore: "Avvio ripristino...",
+        uploading_backup: "Caricamento backup...",
+        extracting_restarting: "Estrazione e riavvio..."
+      },
+      pt: {
+        auto: "🌓 Auto",
+        light: "☀️ Claro",
+        dark: "🌙 Escuro",
+        copy_label: "Copiar",
+        copy_text: "Copy",
+        paste_label: "Colar",
+        paste_text: "Paste",
+        speak_label: "TTS",
+        speak_text: "Ler último",
+        speak_stop: "Parar",
+        interrupt_label: "Interromper",
+        interrupt_text: "Ctrl+C",
+        suspend_label: "Suspender",
+        suspend_text: "Ctrl+Z",
+        expand_label: "Saída",
+        expand_text: "Ctrl+O",
+        expand_title: "Expandir / Recolher saída (Ctrl+O)",
+        copy_auth_label: "Detetar & Copiar",
+        copy_auth_text: "Copiar link Auth",
+        pos_label: "Posição Barra",
+        pos_top: "⬇️ Fixar em baixo",
+        pos_bottom: "⬆️ Fixar em cima",
+        font_size_label: "Tamanho Fonte",
+        font_size_set: "Tamanho da fonte: ",
+        export_label: "Exportar",
+        export_text: "Config",
+        import_label: "Importar",
+        import_text: "Config",
+        upload_title: "Enviar imagem",
+        theme_title: "Tema",
+        tts_title: "Ler última resposta",
+        tts_reading: "A ler última resposta...",
+        tts_stopped: "Leitura parada",
+        tts_no_text: "Nenhuma resposta encontrada para ler",
+        tts_unsupported: "Síntese de voz não suportada neste navegador",
+        no_term_active: "Nenhum terminal ativo",
+        auth_copied: "Link de autenticação copiado para a área de transferência!",
+        auth_opened: "Link de autenticação aberto num novo separador!",
+        no_auth_detected: "Nenhum link de autenticação detetado no terminal",
+        update_available: "Nova versão disponível!",
+        update_btn: "Atualizar agora",
+        updating: "A atualizar...",
+        update_installed: "Atualização instalada! Por favor, feche os separadores ativos e abra novos.",
+        text_copied: "Texto copiado para a área de transferência",
+        no_text_selected: "Selecione texto no terminal para copiar",
+        clip_blocked: "Permissão de área de transferência bloqueada",
+        theme_set: "Tema definido para: ",
+        bar_pinned_top: "Barra fixada EM CIMA (sobre os separadores)",
+        bar_pinned_bottom: "Barra fixada EM BAIXO",
+        session_prefix: "Sessão ",
+        img_inserted: "Imagem inserida: ",
+        path_copied: "Caminho copiado para a área de transferência!\n",
+        upload_error: "Erro ao carregar a imagem",
+        net_failed: "Falha de rede durante o envio",
+        import_confirm: "Tem a certeza? Isto irá substituir a memória atual, conversas e configurações.",
+        import_success: "Cópia de segurança restaurada com sucesso!\n\nO Add-on será reiniciado automaticamente.",
+        import_failed: "Falha na importação: ",
+        preparing_export: "A preparar exportação...",
+        starting_restore: "A iniciar restauro...",
+        uploading_backup: "A enviar cópia de segurança...",
+        extracting_restarting: "A extrair e a reiniciar..."
+      }
+    };
+
+    function getLang() {
+      const userLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+      if (userLang.startsWith('es')) return 'es';
+      if (userLang.startsWith('de')) return 'de';
+      if (userLang.startsWith('fr')) return 'fr';
+      if (userLang.startsWith('it')) return 'it';
+      if (userLang.startsWith('pt')) return 'pt';
+      return 'en';
+    }
+
+    function t(key) {
+      const lang = getLang();
+      return (I18N[lang] && I18N[lang][key]) || I18N['en'][key] || key;
+    }
+
+    function applyI18n() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key) {
+          const val = t(key);
+          if (val) el.innerText = val;
+        }
+      });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (key) {
+          const val = t(key);
+          if (val) el.title = val;
+        }
+      });
+      const uploadBtn = document.getElementById('upload-btn');
+      if (uploadBtn) uploadBtn.title = t('upload_title');
+    }
+
+    // Terminal Palettes
+    const DARK_THEME = {
+      background: '#2b2b2b',
+      foreground: '#f0f6fc',
+      cursor: '#58a6ff',
+      cursorAccent: '#2b2b2b',
+      selection: 'rgba(255, 255, 255, 0.3)',
+      selectionBackground: 'rgba(255, 255, 255, 0.3)',
+      selectionForeground: '#ffffff',
+      selectionInactiveBackground: 'rgba(255, 255, 255, 0.15)',
+      black: '#484f58',
+      red: '#ff7b72',
+      green: '#3fb950',
+      yellow: '#d29922',
+      blue: '#58a6ff',
+      magenta: '#bc8cff',
+      cyan: '#39c5cf',
+      white: '#b1bac4',
+      brightBlack: '#6e7681',
+      brightRed: '#ffa198',
+      brightGreen: '#56d364',
+      brightYellow: '#e3b341',
+      brightBlue: '#79c0ff',
+      brightMagenta: '#d2a8ff',
+      brightCyan: '#56d4dd',
+      brightWhite: '#f0f6fc'
+    };
+
+    const LIGHT_THEME = {
+      background: '#ffffff',
+      foreground: '#1f2328',
+      cursor: '#0969da',
+      cursorAccent: '#ffffff',
+      selection: '#2188ff',
+      selectionBackground: '#2188ff',
+      selectionForeground: '#ffffff',
+      selectionInactiveBackground: '#a5d8ff',
+      black: '#24292f',
+      red: '#cf222e',
+      green: '#1a7f37',
+      yellow: '#9a6700',
+      blue: '#0969da',
+      magenta: '#8250df',
+      cyan: '#1b7c83',
+      white: '#424a53',
+      brightBlack: '#57606a',
+      brightRed: '#a40e26',
+      brightGreen: '#116329',
+      brightYellow: '#633c01',
+      brightBlue: '#218bff',
+      brightMagenta: '#a475f9',
+      brightCyan: '#3192aa',
+      brightWhite: '#1f2328'
+    };
+
+    // Font Size Management
+    function getFontSize() {
+      const stored = (localStorage.getItem('t3_font_size') || localStorage.getItem('agy_font_size'));
+      return stored ? parseInt(stored, 10) : 14;
+    }
+
+    function applyFontSize(size) {
+      const clamped = Math.max(10, Math.min(26, size || getFontSize()));
+      localStorage.setItem('t3_font_size', clamped);
+      const fontDisplay = document.getElementById('font-size-display');
+      if (fontDisplay) fontDisplay.innerText = `${clamped}px`;
+
+      document.querySelectorAll('.term-iframe').forEach(iframe => {
+        try {
+          if (iframe && iframe.contentWindow) {
+            const term = iframe.contentWindow.term || iframe.contentWindow.t || (iframe.contentWindow.ttyd && iframe.contentWindow.ttyd.term);
+            if (term && term.options) {
+              term.options.fontSize = clamped;
+              if (typeof term.refresh === 'function') {
+                term.refresh(0, term.rows - 1);
+              }
+            }
+          }
+        } catch(e) {}
+      });
+    }
+
+    function changeFontSize(delta) {
+      const current = getFontSize();
+      const next = current + delta;
+      applyFontSize(next);
+      showNotification(`${t('font_size_set')}${Math.max(10, Math.min(26, next))}px`);
+    }
+
+    function getEffectiveTheme() {
+      const mode = (localStorage.getItem('t3_theme_mode') || localStorage.getItem('agy_theme_mode')) || 'auto';
+      if (mode === 'dark') return 'dark';
+      if (mode === 'light') return 'light';
+      return (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    }
+
+    function applyThemeToIframe(iframe, effectiveTheme) {
+      try {
+        if (!iframe) return;
+        const termTheme = effectiveTheme === 'light' ? LIGHT_THEME : DARK_THEME;
+        const bg = termTheme.background;
+        const selBg = termTheme.selection || termTheme.selectionBackground;
+        const selFg = termTheme.selectionForeground || termTheme.foreground;
+        
+        if (iframe.contentDocument) {
+          const doc = iframe.contentDocument;
+          if (doc.body) {
+            doc.body.style.backgroundColor = bg;
+          }
+          let styleEl = doc.getElementById('dynamic-term-theme');
+          if (!styleEl) {
+            styleEl = doc.createElement('style');
+            styleEl.id = 'dynamic-term-theme';
+            if (doc.head) doc.head.appendChild(styleEl);
+            else if (doc.body) doc.body.appendChild(styleEl);
+          }
+          styleEl.textContent = `
+            html, body, #terminal, .terminal, .xterm, .xterm-viewport {
+              background-color: ${bg} !important;
+            }
+            ::selection {
+              background-color: ${selBg} !important;
+              color: ${selFg} !important;
+            }
+            .xterm-selection,
+            .xterm-selection div,
+            .xterm .xterm-selection div,
+            .xterm-screen .xterm-selection div,
+            .xterm-rows span::selection {
+              background-color: ${selBg} !important;
+              color: ${selFg} !important;
+              opacity: 0.9 !important;
+            }
+          `;
+          const vp = doc.querySelector('.xterm-viewport');
+          if (vp) vp.style.backgroundColor = bg;
+        }
+        
+        if (iframe.contentWindow) {
+          const term = iframe.contentWindow.term || iframe.contentWindow.t || (iframe.contentWindow.ttyd && iframe.contentWindow.ttyd.term);
+          if (term) {
+            if (term.options) {
+              term.options.theme = termTheme;
+              term.options.fontSize = getFontSize();
+            }
+            if (typeof term.setOption === 'function') {
+              term.setOption('theme', termTheme);
+              term.setOption('fontSize', getFontSize());
+            }
+            if (typeof term.refresh === 'function') {
+              term.refresh(0, term.rows - 1);
+            }
+          }
+        }
+      } catch(e) {}
+    }
+
+    function applyTheme(mode) {
+      if (mode) {
+        localStorage.setItem('t3_theme_mode', mode);
+      }
+      const currentMode = (localStorage.getItem('t3_theme_mode') || localStorage.getItem('agy_theme_mode')) || 'auto';
+      const effective = getEffectiveTheme();
+      
+      document.documentElement.setAttribute('data-theme', effective);
+      
+      const themeBtn = document.getElementById('theme-btn');
+      if (themeBtn) {
+        if (currentMode === 'auto') {
+          themeBtn.title = `${t('theme_title')}: Auto (${effective === 'light' ? t('light') : t('dark')})`;
+          themeBtn.innerHTML = `<svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"></path></svg>`;
+        } else if (currentMode === 'light') {
+          themeBtn.title = `${t('theme_title')}: ${t('light')}`;
+          themeBtn.innerHTML = `<svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+        } else {
+          themeBtn.title = `${t('theme_title')}: ${t('dark')}`;
+          themeBtn.innerHTML = `<svg style="pointer-events: none;" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+        }
+      }
+      
+      document.querySelectorAll('.theme-choice-btn').forEach(btn => {
+        const choice = btn.getAttribute('data-theme-choice');
+        if (choice === currentMode) {
+          btn.style.borderColor = '#58a6ff';
+          btn.style.fontWeight = 'bold';
+        } else {
+          btn.style.borderColor = 'var(--border-color)';
+          btn.style.fontWeight = 'normal';
+        }
+      });
+
+      document.querySelectorAll('.term-iframe').forEach(iframe => {
+        applyThemeToIframe(iframe, effective);
+      });
+    }
+
+    function setThemeMode(mode) {
+      applyTheme(mode);
+      const menu = document.getElementById('extra-keys-menu');
+      if (menu) menu.classList.remove('show');
+      showNotification(`${t('theme_set')}${mode.toUpperCase()}`);
+    }
+
+    function cycleTheme(e) {
+      if (e) e.stopPropagation();
+      const current = (localStorage.getItem('t3_theme_mode') || localStorage.getItem('agy_theme_mode')) || 'auto';
+      const next = current === 'auto' ? 'light' : current === 'light' ? 'dark' : 'auto';
+      applyTheme(next);
+      showNotification(`${t('theme_set')}${next.toUpperCase()}`);
+    }
+
+    // Auto-listen to system & Home Assistant theme changes
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        const currentMode = (localStorage.getItem('t3_theme_mode') || localStorage.getItem('agy_theme_mode')) || 'auto';
+        if (currentMode === 'auto') {
+          applyTheme('auto');
+        }
+      });
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.data && typeof event.data === 'object') {
+        if (event.data.type === 'ha-theme-changed' || event.data.theme) {
+          const currentMode = (localStorage.getItem('t3_theme_mode') || localStorage.getItem('agy_theme_mode')) || 'auto';
+          if (currentMode === 'auto') {
+            applyTheme('auto');
+          }
+        }
+      }
+    });
+
+    // Tab & Session Management
+    let sessions = JSON.parse((localStorage.getItem('t3_sessions') || localStorage.getItem('agy_sessions'))) || [{id: 1, name: 'Session 1'}];
+    let currentSessionId = (localStorage.getItem('t3_current_session') || localStorage.getItem('agy_current_session')) ? parseInt((localStorage.getItem('t3_current_session') || localStorage.getItem('agy_current_session'))) : sessions[0].id;
+    if (!sessions.find(s => s.id === currentSessionId)) currentSessionId = sessions[0].id;
+
+    function saveSessions() {
+      localStorage.setItem('t3_sessions', JSON.stringify(sessions));
+      localStorage.setItem('t3_current_session', currentSessionId);
+    }
+
+    async function copyToClipboard(text) {
+      if (!text) return false;
+      
+      // 1. Modern Async Clipboard API
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {
+          console.warn("Async clipboard writeText failed, trying execCommand fallback:", err);
+        }
+      }
+      
+      // 2. Reliable execCommand('copy') fallback (works inside iframes/HTTP)
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '0';
+        ta.style.left = '0';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (success) return true;
+      } catch (err) {
+        console.error("execCommand fallback failed:", err);
+      }
+      return false;
+    }
+
+    // High-precision Login URL & Auth Code Detection (Multi-line unwrap aware)
+    function detectAuthInfo() {
+      const iframe = getActiveIframe();
+      if (!iframe) return { url: null, code: null };
+
+      let fullText = "";
+      try {
+        const win = iframe.contentWindow;
+        const doc = iframe.contentDocument || (win ? win.document : null);
+
+        // 1. Primary extraction via xterm.js internal buffer
+        if (win && win.term && win.term.buffer && win.term.buffer.active) {
+          const buf = win.term.buffer.active;
+          for (let i = 0; i < buf.length; i++) {
+            const line = buf.getLine(i);
+            if (line) fullText += line.translateToString(true) + "\n";
+          }
+        }
+
+        // 2. DOM fallback
+        if (!fullText && doc) {
+          const rows = doc.querySelectorAll('.xterm-rows > div');
+          if (rows && rows.length > 0) {
+            rows.forEach(r => { fullText += r.innerText + "\n"; });
+          }
+          if (!fullText && doc.body) {
+            fullText = doc.body.innerText;
+          }
+        }
+      } catch (e) {
+        console.error("Error reading terminal text:", e);
+      }
+
+      if (!fullText) return { url: null, code: null };
+
+      // Match multi-line blocks starting with OAuth URLs
+      const urlBlockRegex = /(https:\/\/(?:accounts\.google\.com|t3\.codes|relay\.t3\.codes|github\.com\/login\/device|(?:[a-z0-9-]+\.)*antigravity\.google|www\.google\.com\/device|google\.com\/device|github\.com\/login|login\.microsoftonline\.com|auth\.anthropic\.com)[^\n\r]*(\n[ \t]*[^\n\r]+)*)/gi;
+
+      const matches = [...fullText.matchAll(urlBlockRegex)];
+      let foundUrl = null;
+      let foundCode = null;
+
+      if (matches.length > 0) {
+        // Iterate backwards from the newest match to the oldest
+        for (let m = matches.length - 1; m >= 0; m--) {
+          const rawBlock = matches[m][0];
+          const rawLines = rawBlock.split('\n');
+          const urlParts = [];
+
+          for (let i = 0; i < rawLines.length; i++) {
+            const trimmed = rawLines[i].trim();
+            if (!trimmed) break;
+            // Stop at prompt lines, terminal shells, or instructions
+            if (i > 0 && /^(?:enter\s+|please\s+|if\s+you|waiting|paste\s+|to\s+|authorization|code:|\$|#|>|root@)/i.test(trimmed)) {
+              break;
+            }
+            // If continuation line has multiple spaces and no URL query indicators, stop
+            if (i > 0 && /\s{2,}/.test(trimmed) && !/[&=%]/.test(trimmed)) {
+              break;
+            }
+            urlParts.push(trimmed);
+          }
+
+          let u = urlParts.join('').replace(/[\r\n\s]+/g, '');
+          u = u.replace(/[.,;:)>\]"'\\]+$/, '');
+          u = u.replace(/%2F2F/gi, '%2F');
+
+          if (u.startsWith('https://')) {
+            // Fail-safe: ensure response_type=code is present if Google OAuth2 omitted it due to wrapping
+            if (u.includes('accounts.google.com/o/oauth2') && !u.includes('response_type=')) {
+              u += (u.includes('?') ? '&' : '?') + 'response_type=code';
+            }
+            foundUrl = u;
+            break;
+          }
+        }
+      }
+
+      // Check for verification / device code
+      const codeRegex = /(?:enter\s+(?:the\s+)?code|verification\s+code|device\s+code|pin|code)[\s:]+([A-Z0-9]{4}(?:-[A-Z0-9]{4})?)\b/i;
+      const standAloneCodeRegex = /\b([A-Z0-9]{4}-[A-Z0-9]{4})\b/;
+      const cMatch = fullText.match(codeRegex) || fullText.match(standAloneCodeRegex);
+      if (cMatch && cMatch[1] && cMatch[1].toLowerCase() !== 'code') {
+        foundCode = cMatch[1];
+      }
+
+      return { url: foundUrl, code: foundCode };
+    }
+
+    window.openAuthModal = function() {
+      const modal = document.getElementById('auth-link-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      refreshAuthModal();
+    };
+
+    window.closeAuthModal = function() {
+      const modal = document.getElementById('auth-link-modal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.refreshAuthModal = function() {
+      const auth = detectAuthInfo();
+      const status = document.getElementById('auth-modal-status');
+      const input = document.getElementById('auth-url-input');
+      const link = document.getElementById('open-auth-link');
+      const codeBox = document.getElementById('device-code-box');
+      const codeText = document.getElementById('device-code-text');
+      const copyBtn = document.getElementById('copy-auth-btn');
+
+      if (copyBtn) copyBtn.textContent = 'Copy URL';
+
+      if (auth.url) {
+        if (status) {
+          status.textContent = '🟢 Login URL Detected';
+          status.style.color = '#3fb950';
+          status.style.background = 'rgba(46, 160, 67, 0.15)';
+          status.style.borderColor = 'rgba(46, 160, 67, 0.4)';
+        }
+        if (input) input.value = auth.url;
+        if (link) {
+          link.href = auth.url;
+          link.style.display = 'inline-flex';
+        }
+        if (auth.code && codeBox && codeText) {
+          codeText.textContent = auth.code;
+          codeBox.style.display = 'block';
+        } else if (codeBox) {
+          codeBox.style.display = 'none';
+        }
+      } else {
+        if (status) {
+          status.textContent = 'ℹ️ No Active Login Prompt Found';
+          status.style.color = '#58a6ff';
+          status.style.background = 'rgba(31, 111, 235, 0.15)';
+          status.style.borderColor = 'rgba(31, 111, 235, 0.4)';
+        }
+        if (input) input.value = '';
+        if (link) link.style.display = 'none';
+        if (codeBox) codeBox.style.display = 'none';
+      }
+    };
+
+    window.copyAuthUrlFromModal = async function() {
+      const input = document.getElementById('auth-url-input');
+      const copyBtn = document.getElementById('copy-auth-btn');
+      if (input && input.value) {
+        const success = await copyToClipboard(input.value);
+        if (success) {
+          if (copyBtn) copyBtn.textContent = 'Copied! ✓';
+          showNotification(t('auth_copied') || 'Login URL copied to clipboard!');
+          setTimeout(() => { if (copyBtn) copyBtn.textContent = 'Copy URL'; }, 2500);
+        }
+      } else {
+        showNotification(t('no_auth_detected') || 'No login URL detected yet.');
+      }
+    };
+
+    window.copyDeviceCode = function() {
+      const codeText = document.getElementById('device-code-text');
+      if (codeText && codeText.textContent) {
+        copyToClipboard(codeText.textContent);
+        showNotification('Verification code copied!');
+      }
+    };
+
+    window.submitAuthCodeToTerminal = function() {
+      const codeInput = document.getElementById('auth-code-input');
+      if (!codeInput || !codeInput.value.trim()) {
+        showNotification('Please enter or paste the code first.');
+        return;
+      }
+      const code = codeInput.value.trim();
+      const iframe = getActiveIframe();
+      if (!iframe || !iframe.contentWindow) {
+        showNotification(t('no_term_active') || 'No active terminal.');
+        return;
+      }
+
+      if (iframe.contentWindow.term) {
+        iframe.contentWindow.term.paste(code + '\r');
+      } else {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        const target = doc.querySelector('.xterm-helper-textarea') || doc.querySelector('.xterm-screen');
+        if (target) {
+          const dt = new DataTransfer();
+          dt.setData('text/plain', code + '\r');
+          target.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+          setTimeout(() => {
+            target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+          }, 20);
+        }
+      }
+      showNotification('Auth code sent to terminal! ⏎');
+      codeInput.value = '';
+      setTimeout(() => { closeAuthModal(); }, 1200);
+    };
+
+    window.copyAuthUrl = function() {
+      openAuthModal();
+    };
+
+    // Auto-detect login prompt in background every 2.5s and highlight button
+    setInterval(() => {
+      const auth = detectAuthInfo();
+      const btn = document.getElementById('auth-link-btn');
+      const label = document.getElementById('auth-btn-label');
+      if (btn) {
+        if (auth.url) {
+          btn.classList.add('auth-active');
+          if (label) label.textContent = 'Login!';
+        } else {
+          btn.classList.remove('auth-active');
+          if (label) label.textContent = 'Login';
+        }
+      }
+    }, 2500);
+
+    function getActiveIframe() {
+      return document.querySelector(`.term-iframe[data-session-id="${currentSessionId}"]`);
+    }
+
+    function setupIframeEvents(iframe) {
+      try {
+        const iframeWin = iframe.contentWindow;
+        if (!iframeWin) return;
+        const iframeDoc = iframeWin.document;
+        
+        const interval = setInterval(() => {
+          const viewport = iframeDoc.querySelector('.xterm-viewport');
+          const screen = iframeDoc.querySelector('.xterm-screen');
+          
+          if (viewport && screen) {
+            clearInterval(interval);
+            applyThemeToIframe(iframe, getEffectiveTheme());
+            
+            const fixTextarea = () => {
+              const ta = iframeDoc.querySelector('.xterm-helper-textarea');
+              if (ta && !ta.dataset.fixed) {
+                ta.dataset.fixed = "true";
+                ta.setAttribute('autocomplete', 'off');
+                ta.setAttribute('autocorrect', 'off');
+                ta.setAttribute('autocapitalize', 'none');
+                ta.setAttribute('spellcheck', 'false');
+                ta.setAttribute('data-gramm', 'false');
+                ta.setAttribute('inputmode', 'email');
+              }
+            };
+            fixTextarea();
+
+            iframeDoc.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+            });
+
+            const observer = new MutationObserver((mutations) => {
+              fixTextarea();
+              mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                  if (node.nodeType === 1 && node.tagName === 'DIV' && !node.className) {
+                    const text = node.textContent || '';
+                    if (text.match(/^\d+x\d+$/)) {
+                      node.style.display = 'none';
+                    } else if (text.includes('Reconnect') || text.includes('Closed')) {
+                      node.style.display = 'none';
+                      setTimeout(() => {
+                        const textarea = iframeDoc.querySelector('.xterm-helper-textarea');
+                        if (textarea) {
+                          textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+                        } else {
+                          screen.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+                        }
+                      }, 500);
+                    }
+                  }
+                });
+              });
+            });
+            
+            const xtermContainer = iframeDoc.querySelector('.xterm');
+            if (xtermContainer) {
+              observer.observe(xtermContainer, { childList: true });
+            }
+            
+            const FRICTION = 0.97;
+            const MIN_VELOCITY = 0.3;
+            
+            let lastY = 0, lastTime = 0, velocity = 0;
+            let animId = null, tracking = false;
+            
+            function coast() {
+              velocity *= FRICTION;
+              if (Math.abs(velocity) < MIN_VELOCITY) { animId = null; return; }
+              viewport.scrollTop += velocity;
+              animId = iframeWin.requestAnimationFrame(coast);
+            }
+            
+            function stop() {
+              if (animId) { iframeWin.cancelAnimationFrame(animId); animId = null; }
+              velocity = 0;
+            }
+            
+            screen.addEventListener('touchstart', (e) => {
+              if (e.touches.length !== 1) return;
+              stop();
+              lastY = e.touches[0].clientY;
+              lastTime = performance.now();
+              tracking = true;
+            }, { passive: false, capture: true });
+            
+            screen.addEventListener('touchmove', (e) => {
+              if (!tracking || e.touches.length !== 1) return;
+              const y = e.touches[0].clientY;
+              const now = performance.now();
+              const dt = now - lastTime;
+              const dy = lastY - y;
+              
+              if (dt > 0) {
+                const v = (dy / dt) * 16;
+                velocity = velocity * 0.2 + v * 0.8;
+              }
+              
+              viewport.scrollTop += dy;
+              
+              lastY = y;
+              lastTime = now;
+              e.preventDefault();
+              e.stopImmediatePropagation();
+            }, { passive: false, capture: true });
+            
+            screen.addEventListener('touchend', () => {
+              if (!tracking) return;
+              tracking = false;
+              if (Math.abs(velocity) > MIN_VELOCITY) {
+                animId = iframeWin.requestAnimationFrame(coast);
+              }
+            }, { passive: false, capture: true });
+            
+            screen.addEventListener('touchcancel', () => {
+              tracking = false; stop();
+            }, { passive: false, capture: true });
+            
+            const scrollToBottom = () => {
+              if (viewport) viewport.scrollTop = viewport.scrollHeight;
+            };
+
+            [100, 300, 600, 1000].forEach(delay => {
+              setTimeout(scrollToBottom, delay);
+            });
+            
+            // Enable copyOnSelect on xterm instance
+            if (iframeWin.term) {
+              if (iframeWin.term.options) {
+                iframeWin.term.options.copyOnSelect = true;
+              }
+              if (typeof iframeWin.term.onSelectionChange === 'function') {
+                iframeWin.term.onSelectionChange(() => {
+                  const sel = iframeWin.term.getSelection();
+                  if (sel && sel.trim().length > 0) {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                      navigator.clipboard.writeText(sel).catch(() => {});
+                    }
+                  }
+                });
+              }
+            }
+
+            const handleCopyKey = (e) => {
+              const isCtrlC = (e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.keyCode === 67);
+              if (isCtrlC) {
+                let hasSel = false;
+                if (iframeWin.term && typeof iframeWin.term.hasSelection === 'function') {
+                  hasSel = iframeWin.term.hasSelection();
+                }
+                if (!hasSel && iframeDoc.getSelection) {
+                  hasSel = iframeDoc.getSelection().toString().length > 0;
+                }
+                if (e.shiftKey || hasSel) {
+                  if (hasSel) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.copySelection();
+                  }
+                }
+              }
+            };
+            iframeDoc.addEventListener('keydown', handleCopyKey, true);
+            window.addEventListener('keydown', handleCopyKey, true);
+
+            iframeWin.addEventListener('resize', () => {
+              // layout notification without scroll forcing
+            });
+
+            iframeDoc.addEventListener('focusin', () => {
+              [50, 150, 300, 500, 800].forEach(delay => setTimeout(adjustForKeyboard, delay));
+            });
+            iframeDoc.addEventListener('focusout', () => {
+              [50, 150, 300].forEach(delay => setTimeout(adjustForKeyboard, delay));
+            });
+          }
+        }, 500);
+      } catch(err) {
+        console.error("Iframe access error:", err);
+      }
+    }
+
+    function ensureIframe(id) {
+      const container = document.getElementById('terminal-container');
+      let iframe = document.querySelector(`.term-iframe[data-session-id="${id}"]`);
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.className = 'term-iframe';
+        iframe.setAttribute('data-session-id', id);
+        iframe.src = 'ttyd/?arg=' + id;
+        iframe.onload = () => {
+          applyThemeToIframe(iframe, getEffectiveTheme());
+          setupIframeEvents(iframe);
+        };
+        container.appendChild(iframe);
+      }
+      return iframe;
+    }
+
+    window.switchSession = function(id) {
+      currentSessionId = id;
+      saveSessions();
+      const iframe = ensureIframe(id);
+
+      document.querySelectorAll('.term-iframe').forEach(f => {
+        if (parseInt(f.getAttribute('data-session-id')) === id) {
+          f.style.display = 'block';
+          f.classList.add('active');
+          applyThemeToIframe(f, getEffectiveTheme());
+        } else {
+          f.style.display = 'none';
+          f.classList.remove('active');
+        }
+      });
+
+      renderTabs();
+    };
+
+    window.createSession = function() {
+      const maxId = sessions.reduce((max, s) => Math.max(max, s.id), 0);
+      const newId = maxId + 1;
+      sessions.push({id: newId, name: t('session_prefix') + newId});
+      switchSession(newId);
+    };
+
+    window.closeSession = async function(e, id) {
+      e.stopPropagation();
+      if (sessions.length <= 1) return;
+      
+      const idx = sessions.findIndex(s => s.id === id);
+      sessions.splice(idx, 1);
+      
+      const iframe = document.querySelector(`.term-iframe[data-session-id="${id}"]`);
+      if (iframe) iframe.remove();
+      
+      if (currentSessionId === id) {
+        switchSession(sessions[Math.max(0, idx - 1)].id);
+      } else {
+        saveSessions();
+        renderTabs();
+      }
+      
+      try {
+        await fetch('kill?session_id=' + id);
+      } catch(err) { console.error('Failed to kill session', err); }
+    };
+
+    function renderTabs() {
+      const tabBar = document.getElementById('tab-bar');
+      tabBar.innerHTML = '';
+      
+      sessions.forEach(s => {
+        const tab = document.createElement('div');
+        tab.className = 'tab' + (s.id === currentSessionId ? ' active' : '');
+        let closeHtml = sessions.length > 1 ? `<span class="tab-close" onclick="closeSession(event, ${s.id})">×</span>` : '';
+        tab.innerHTML = `<span>${s.name}</span>${closeHtml}`;
+        tab.onclick = () => switchSession(s.id);
+        tabBar.appendChild(tab);
+      });
+      
+      const addBtn = document.createElement('button');
+      addBtn.className = 'tab-add';
+      addBtn.innerHTML = '+';
+      addBtn.onclick = createSession;
+      tabBar.appendChild(addBtn);
+    }
+
+    // Toolbar Position (Top / Bottom) Management
+    function applyToolbarPosition(pos) {
+      if (pos) {
+        localStorage.setItem('t3_toolbar_pos', pos);
+      }
+      const current = (localStorage.getItem('t3_toolbar_pos') || localStorage.getItem('agy_toolbar_pos')) || (window.innerWidth <= 768 ? 'top' : 'bottom');
+      const root = document.getElementById('app-root');
+      const txt = document.getElementById('toolbar-pos-text');
+      if (root) {
+        if (current === 'bottom') {
+          root.classList.add('toolbar-bottom');
+          root.classList.remove('toolbar-top');
+          if (txt) txt.innerText = t('pos_bottom');
+        } else {
+          root.classList.remove('toolbar-bottom');
+          root.classList.add('toolbar-top');
+          if (txt) txt.innerText = t('pos_top');
+        }
+      }
+    }
+
+    window.toggleToolbarPosition = function() {
+      const current = (localStorage.getItem('t3_toolbar_pos') || localStorage.getItem('agy_toolbar_pos')) || (window.innerWidth <= 768 ? 'top' : 'bottom');
+      const next = current === 'top' ? 'bottom' : 'top';
+      applyToolbarPosition(next);
+      const menu = document.getElementById('extra-keys-menu');
+      if (menu) menu.classList.remove('show');
+      showNotification(next === 'top' ? t('bar_pinned_top') : t('bar_pinned_bottom'));
+    };
+
+    // Initialize i18n, tabs, theme, font size & toolbar position
+    applyI18n();
+    renderTabs();
+    applyTheme();
+    applyFontSize();
+    applyToolbarPosition();
+    switchSession(currentSessionId);
+
+    // Android Keyboard & Visual Viewport Handler (keeps footer permanently visible above keyboard)
+    let lastVh = 0;
+    let lastTop = 0;
+    function adjustForKeyboard() {
+      const vh = (window.visualViewport && window.visualViewport.height > 100) ? window.visualViewport.height : window.innerHeight;
+      const top = (window.visualViewport && window.visualViewport.offsetTop > 0) ? window.visualViewport.offsetTop : 0;
+      
+      if (Math.abs(vh - lastVh) > 1 || Math.abs(top - lastTop) > 1) {
+        lastVh = vh;
+        lastTop = top;
+        const appRoot = document.getElementById('app-root');
+        if (appRoot) {
+          appRoot.style.height = `${vh}px`;
+          appRoot.style.top = `${top}px`;
+        }
+
+        const activeIframe = getActiveIframe();
+        if (activeIframe && activeIframe.contentWindow) {
+          activeIframe.contentWindow.dispatchEvent(new Event('resize'));
+        }
+      }
+    }
+
+    window.addEventListener('resize', adjustForKeyboard);
+    window.addEventListener('orientationchange', () => setTimeout(adjustForKeyboard, 300));
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', adjustForKeyboard);
+      window.visualViewport.addEventListener('scroll', adjustForKeyboard);
+    }
+    setInterval(adjustForKeyboard, 400);
+    adjustForKeyboard();
+
+    // Android/Browser background recovery handler
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        setTimeout(() => {
+          const activeIframe = getActiveIframe();
+          if (activeIframe && activeIframe.contentWindow) {
+            activeIframe.contentWindow.dispatchEvent(new Event('resize'));
+          }
+        }, 250);
+      }
+    });
+
+    async function checkVersion() {
+      try {
+        const res = await fetch('version_check');
+        const data = await res.json();
+        if (data.update_available) {
+          const banner = document.getElementById('update-banner');
+          document.getElementById('update-text').innerText = `${t('update_available')} ${data.current} -> ${data.latest}`;
+          banner.style.display = 'flex';
+        }
+      } catch(e) {}
+    }
+    
+    async function installUpdate() {
+      const banner = document.getElementById('update-banner');
+      const btn = banner.querySelector('button');
+      btn.innerText = t('updating');
+      btn.disabled = true;
+      try {
+        const res = await fetch('update_cli');
+        if (res.ok) {
+          document.getElementById('update-text').innerText = t('update_installed');
+          btn.style.display = 'none';
+          banner.style.background = '#155724';
+          banner.style.color = '#d4edda';
+          banner.style.borderColor = '#c3e6cb';
+        } else {
+          throw new Error('Update failed');
+        }
+      } catch(e) {
+        btn.innerText = 'Failed';
+        btn.disabled = false;
+      }
+    }
+
+    checkVersion();
+
+    async function uploadImage() {
+      const fileInput = document.getElementById('file');
+      if (!fileInput.files.length) return;
+      
+      const file = fileInput.files[0];
+      const btn = document.getElementById('upload-btn');
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '...';
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('session_id', currentSessionId);
+      
+      try {
+        const res = await fetch('upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (res.ok) {
+          const data = await res.json();
+          try {
+            const iframe = getActiveIframe();
+            if (iframe && iframe.contentWindow && iframe.contentWindow.term) {
+              iframe.contentWindow.term.paste(data.filepath);
+              showNotification(`${t('img_inserted')}${data.filepath}`);
+            } else {
+              throw new Error("No terminal target found");
+            }
+          } catch(err) {
+            try {
+              await copyToClipboard(`"${data.filepath}"`);
+              showNotification(`${t('path_copied')}${data.filepath}`);
+            } catch(e) {
+              showNotification(data.filepath);
+            }
+          }
+        } else {
+          showNotification(t('upload_error'));
+        }
+      } catch(e) {
+        showNotification(t('net_failed'));
+      }
+      
+      btn.innerHTML = originalHtml;
+      fileInput.value = '';
+    }
+
+    // Text-to-Speech (TTS) - Read Last Agy Response
+    let isSpeaking = false;
+
+    function getSpeechSynthesis() {
+      try {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+          return window.speechSynthesis;
+        }
+      } catch (e) {}
+      try {
+        if (window.parent && 'speechSynthesis' in window.parent && window.parent.speechSynthesis) {
+          return window.parent.speechSynthesis;
+        }
+      } catch (e) {}
+      try {
+        if (window.top && 'speechSynthesis' in window.top && window.top.speechSynthesis) {
+          return window.top.speechSynthesis;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function getSpeechUtteranceClass() {
+      if (typeof SpeechSynthesisUtterance !== 'undefined') return SpeechSynthesisUtterance;
+      try {
+        if (window.parent && window.parent.SpeechSynthesisUtterance) return window.parent.SpeechSynthesisUtterance;
+      } catch (e) {}
+      try {
+        if (window.top && window.top.SpeechSynthesisUtterance) return window.top.SpeechSynthesisUtterance;
+      } catch (e) {}
+      return null;
+    }
+
+    let availableVoices = [];
+    function loadVoices() {
+      const synth = getSpeechSynthesis();
+      if (synth && typeof synth.getVoices === 'function') {
+        availableVoices = synth.getVoices() || [];
+      }
+    }
+    const initialSynth = getSpeechSynthesis();
+    if (initialSynth) {
+      loadVoices();
+      if (typeof initialSynth.addEventListener === 'function') {
+        initialSynth.addEventListener('voiceschanged', loadVoices);
+      } else {
+        initialSynth.onvoiceschanged = loadVoices;
+      }
+    }
+
+    function pickBestVoice(synth, langCode) {
+      if (!synth) return null;
+      let voices = availableVoices && availableVoices.length > 0 ? availableVoices : (typeof synth.getVoices === 'function' ? (synth.getVoices() || []) : []);
+      if (!voices || voices.length === 0) return null;
+
+      const prefix = (langCode || 'es').toLowerCase().substring(0, 2);
+      const matching = voices.filter(v => v.lang && v.lang.toLowerCase().replace('_', '-').startsWith(prefix));
+      const pool = matching.length > 0 ? matching : voices;
+
+      // 1. Prefer high quality Natural / Neural / Online / Premium / Google / Enhanced voices
+      const natural = pool.find(v => 
+        /natural|neural|online|premium|enhanced|google|multilingual/i.test(v.name) ||
+        /natural|neural|online|premium|enhanced|google|multilingual/i.test(v.voiceURI || '')
+      );
+      if (natural) return natural;
+
+      // 2. Non-desktop (avoids old legacy SAPI5 robotic desktop voices on Windows)
+      const modern = pool.find(v => !/desktop/i.test(v.name));
+      if (modern) return modern;
+
+      // 3. System default voice
+      return pool.find(v => v.default) || pool[0];
+    }
+
+    function updateSpeakerBtnState(active) {
+      isSpeaking = active;
+      const ttsBtn = document.getElementById('tts-btn');
+      if (active) {
+        if (ttsBtn) ttsBtn.classList.add('speaking');
+      } else {
+        if (ttsBtn) ttsBtn.classList.remove('speaking');
+      }
+    }
+
+    function extractLastAgyResponse() {
+      const iframe = getActiveIframe();
+      if (!iframe) return '';
+      let rawLines = [];
+      try {
+        const win = iframe.contentWindow;
+        const doc = iframe.contentDocument;
+        const term = win?.term || win?.t || (doc && doc.getElementById('terminal')?._xterm) || (doc && doc.querySelector('.xterm')?._xterm);
+        
+        if (term && term.buffer && term.buffer.active) {
+          const buf = term.buffer.active;
+          for (let i = 0; i < buf.length; i++) {
+            const l = buf.getLine(i);
+            if (l) rawLines.push(l.translateToString(true));
+          }
+        } else if (doc) {
+          const rows = doc.querySelectorAll('.xterm-rows > div');
+          rows.forEach(r => rawLines.push(r.textContent || ''));
+        }
+      } catch(e) {
+        console.error("Error reading terminal buffer:", e);
+      }
+
+      let fullText = rawLines.join('\n');
+      if (!fullText.trim()) {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc && doc.body) fullText = doc.body.innerText;
+        } catch(e) {}
+      }
+
+      if (!fullText || !fullText.trim()) return '';
+
+      // Strip ANSI codes
+      fullText = fullText.replace(/\x1b\[[0-9;]*m/g, '');
+
+      let lines = fullText.split('\n').map(l => l.trimEnd());
+
+      // 1. Strip trailing empty lines, status lines, divider lines, and empty active prompts from the bottom
+      while (lines.length > 0) {
+        const last = lines[lines.length - 1].trim();
+        if (!last) {
+          lines.pop();
+        } else if (last.startsWith('?') || last.includes('for shortcuts') || /^(Gemini|Claude|GPT|DeepSeek|Antigravity)\s+[0-9]/i.test(last)) {
+          lines.pop();
+        } else if (/^[─\-_=~*#\s]{3,}$/.test(last) || /^[\u2500-\u257F\s]{3,}$/.test(last)) {
+          lines.pop();
+        } else if (last === '>' || last === '> []' || last === '❯' || last === '$' || last === '#' || last.startsWith('> [') || last.startsWith('❯ [')) {
+          lines.pop();
+        } else {
+          break;
+        }
+      }
+
+      if (lines.length === 0) return '';
+
+      // 2. Collect backwards all response lines until we hit the user prompt "> <command>" or a previous divider line
+      const responseLines = [];
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Stop if we hit the user prompt that triggered this response: e.g. "> que tal", "❯ que tal"
+        if (/^(>|❯|›|\$)\s+\S+/.test(trimmed) || trimmed.startsWith('User:') || trimmed.startsWith('USER:')) {
+          break;
+        }
+
+        // Stop if we reached a preceding divider line
+        if (/^[─\-_=~*#\s]{4,}$/.test(trimmed) || /^[\u2500-\u257F\s]{4,}$/.test(trimmed)) {
+          break;
+        }
+
+        // Stop if we hit welcome header
+        if (trimmed.includes('Antigravity CLI') || trimmed.includes('@gmail.com') || trimmed.includes('@google.com')) {
+          break;
+        }
+
+        responseLines.unshift(line);
+      }
+
+      // 3. Clean up formatting (box characters, markdown, extra spaces)
+      const cleaned = responseLines
+        .map(line => line
+          .replace(/[\u2500-\u257F]/g, ' ')
+          .replace(/```[a-zA-Z]*/g, '')
+          .replace(/[`#*_\~]/g, '')
+        )
+        .filter(line => line.trim().length > 0)
+        .join(' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      return cleaned;
+    }
+
+    let currentAudio = null;
+
+    function stopAllSpeech() {
+      const synth = getSpeechSynthesis();
+      if (synth) {
+        try { synth.cancel(); } catch(e) {}
+      }
+      if (currentAudio) {
+        try {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+          currentAudio = null;
+        } catch(e) {}
+      }
+      updateSpeakerBtnState(false);
+    }
+
+    function playAudioTTS(text, lang) {
+      if (!text || !text.trim()) {
+        updateSpeakerBtnState(false);
+        return;
+      }
+
+      // Split text into chunks under 180 chars at sentence boundaries
+      const maxLen = 180;
+      const chunks = [];
+      const sentences = text.match(/[^.!?\n]+[.!?\n]*/g) || [text];
+      
+      let currentChunk = "";
+      for (const s of sentences) {
+        if ((currentChunk + s).length <= maxLen) {
+          currentChunk += s;
+        } else {
+          if (currentChunk.trim()) chunks.push(currentChunk.trim());
+          if (s.length <= maxLen) {
+            currentChunk = s;
+          } else {
+            const words = s.split(' ');
+            currentChunk = "";
+            for (const w of words) {
+              if ((currentChunk + ' ' + w).length <= maxLen) {
+                currentChunk += (currentChunk ? ' ' : '') + w;
+              } else {
+                if (currentChunk) chunks.push(currentChunk);
+                currentChunk = w;
+              }
+            }
+          }
+        }
+      }
+      if (currentChunk.trim()) chunks.push(currentChunk.trim());
+
+      if (chunks.length === 0) {
+        updateSpeakerBtnState(false);
+        return;
+      }
+
+      let chunkIdx = 0;
+      updateSpeakerBtnState(true);
+      showNotification(t('tts_reading'));
+
+      function playNext() {
+        if (!isSpeaking || chunkIdx >= chunks.length) {
+          stopAllSpeech();
+          return;
+        }
+        const chunk = chunks[chunkIdx++];
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang || 'es')}&client=tw-ob&q=${encodeURIComponent(chunk)}`;
+        
+        currentAudio = new Audio(url);
+        currentAudio.defaultPlaybackRate = 1.6;
+        currentAudio.playbackRate = 1.6;
+        currentAudio.onended = playNext;
+        currentAudio.onerror = () => {
+          console.warn("Audio TTS chunk failed, playing next:", chunk);
+          playNext();
+        };
+        currentAudio.play().then(() => {
+          if (currentAudio) currentAudio.playbackRate = 1.6;
+        }).catch(err => {
+          console.warn("Google TTS stream blocked, falling back to native SpeechSynthesis:", err);
+          playNativeTTS(text, lang);
+        });
+      }
+
+      playNext();
+    }
+
+    function playNativeTTS(text, lang) {
+      const synth = getSpeechSynthesis();
+      const UtteranceClass = getSpeechUtteranceClass();
+      if (!synth || !UtteranceClass) {
+        stopAllSpeech();
+        showNotification(t('tts_unsupported'));
+        return;
+      }
+      try {
+        synth.cancel();
+        const utterance = new UtteranceClass(text);
+        const langMap = {
+          'es': 'es-ES',
+          'en': 'en-US',
+          'de': 'de-DE',
+          'fr': 'fr-FR',
+          'it': 'it-IT',
+          'pt': 'pt-PT'
+        };
+        const targetLang = langMap[lang] || 'es-ES';
+        utterance.lang = targetLang;
+        utterance.rate = 1.25;
+        utterance.pitch = 1.0;
+
+        const bestVoice = pickBestVoice(synth, targetLang);
+        if (bestVoice) {
+          utterance.voice = bestVoice;
+        }
+
+        utterance.onstart = () => {
+          updateSpeakerBtnState(true);
+          showNotification(t('tts_reading'));
+        };
+
+        utterance.onend = () => {
+          updateSpeakerBtnState(false);
+        };
+
+        utterance.onerror = () => {
+          updateSpeakerBtnState(false);
+        };
+
+        synth.speak(utterance);
+      } catch(e) {
+        stopAllSpeech();
+        showNotification(t('tts_unsupported'));
+      }
+    }
+
+    window.toggleSpeakLastResponse = function(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('extra-keys-menu');
+      if (menu) menu.classList.remove('show');
+
+      if (isSpeaking) {
+        stopAllSpeech();
+        showNotification(t('tts_stopped'));
+        return;
+      }
+
+      const text = extractLastAgyResponse();
+      if (!text || text.length === 0) {
+        showNotification(t('tts_no_text'));
+        return;
+      }
+
+      const lang = getLang() || 'es';
+      playAudioTTS(text, lang.substring(0, 2));
+    };
+
+    window.copySelection = async function() {
+      try {
+        const iframe = getActiveIframe();
+        let text = '';
+        if (iframe && iframe.contentWindow) {
+          if (iframe.contentWindow.term && typeof iframe.contentWindow.term.getSelection === 'function') {
+            text = iframe.contentWindow.term.getSelection();
+          }
+        }
+        if (!text && iframe && iframe.contentDocument) {
+          text = iframe.contentDocument.getSelection() ? iframe.contentDocument.getSelection().toString() : '';
+        }
+        if (!text && window.getSelection) {
+          text = window.getSelection().toString();
+        }
+        if (text && text.trim().length > 0) {
+          const success = await copyToClipboard(text);
+          if (success) {
+            showNotification(t('text_copied'));
+          } else {
+            showNotification(t('clip_blocked'));
+          }
+        } else {
+          showNotification(t('no_text_selected'));
+        }
+      } catch (err) {
+        showNotification(t('clip_blocked'));
+      }
+    };
+
+    window.pasteFromClipboard = async function() {
+      let text = null;
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          text = await navigator.clipboard.readText();
+        }
+      } catch (err) {
+        console.warn("Clipboard readText failed:", err);
+      }
+      if (!text) {
+        text = prompt(t('paste_label') || "Text zum Einfügen / Paste text:");
+      }
+      if (!text) return;
+      const iframe = getActiveIframe();
+      if (iframe && iframe.contentWindow) {
+        if (iframe.contentWindow.term) {
+           iframe.contentWindow.term.paste(text);
+        } else {
+           const textarea = iframe.contentDocument.querySelector('.xterm-helper-textarea');
+           if (textarea) {
+               textarea.value = text;
+               textarea.dispatchEvent(new Event('input', { bubbles: true }));
+           }
+        }
+      }
+    };
+
+    window.promptTextInput = function() {
+      const text = prompt("Text / Spracheingabe eingeben:");
+      if (text !== null && text !== "") {
+        const iframe = getActiveIframe();
+        if (iframe && iframe.contentWindow && iframe.contentWindow.term) {
+          iframe.contentWindow.term.paste(text);
+        }
+      }
+    };
+    
+    function toggleContextMenu(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('extra-keys-menu');
+      menu.classList.toggle('show');
+      const dpad = document.getElementById('dpad-menu');
+      if (dpad) dpad.classList.remove('show');
+    }
+    
+    function toggleDpadMenu(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('dpad-menu');
+      menu.classList.toggle('show');
+      const extraMenu = document.getElementById('extra-keys-menu');
+      if (extraMenu) extraMenu.classList.remove('show');
+    }
+    
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('extra-keys-menu');
+      if (menu && menu.classList.contains('show') && !menu.contains(e.target)) {
+        menu.classList.remove('show');
+      }
+      const dpad = document.getElementById('dpad-menu');
+      if (dpad && dpad.classList.contains('show') && !dpad.contains(e.target)) {
+        dpad.classList.remove('show');
+      }
+    });
+
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
+    let notifTimeout;
+    function showNotification(text) {
+      const notif = document.getElementById('notification');
+      notif.innerText = text;
+      notif.classList.add('show');
+      
+      clearTimeout(notifTimeout);
+      notifTimeout = setTimeout(() => {
+        notif.classList.remove('show');
+      }, 5000);
+    }
+
+    function sendVirtualKey(key, keyCode) {
+      try {
+        const iframe = getActiveIframe();
+        if (!iframe || !iframe.contentDocument) return;
+        const iframeDoc = iframe.contentDocument;
+        
+        const target = iframeDoc.querySelector('.xterm-helper-textarea') || iframeDoc.querySelector('.xterm-screen');
+        if (!target) return;
+        
+        const seq = {
+          'Enter': '\r', 'Escape': '\x1b', 'Tab': '\x09',
+          'ArrowUp': '\x1b[A', 'ArrowDown': '\x1b[B', 'ArrowLeft': '\x1b[D', 'ArrowRight': '\x1b[C',
+          'CtrlC': '\x03', 'CtrlD': '\x04', 'CtrlZ': '\x1a'
+        };
+
+        if (seq[key]) {
+            const dt = new DataTransfer();
+            dt.setData('text/plain', seq[key]);
+            target.dispatchEvent(new ClipboardEvent('paste', {
+                clipboardData: dt, bubbles: true, cancelable: true
+            }));
+        } else if (keyCode) {
+            target.dispatchEvent(new KeyboardEvent('keydown', {
+                key: key, code: key, keyCode: keyCode, which: keyCode, bubbles: true
+            }));
+        }
+      } catch(e) {}
+    }
+
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('mousedown', (e) => {
+        const key = btn.getAttribute('data-key');
+        const cmd = btn.getAttribute('data-cmd');
+        if (key || cmd || btn.classList.contains('paste-menu-btn')) {
+          e.preventDefault();
+        }
+      });
+      
+      btn.addEventListener('click', (e) => {
+        if (btn.id !== 'main-action-btn') {
+          document.getElementById('extra-keys-menu').classList.remove('show');
+        }
+        if (btn.id !== 'dpad-toggle-btn' && !btn.closest('#dpad-menu')) {
+          const dpad = document.getElementById('dpad-menu');
+          if (dpad) dpad.classList.remove('show');
+        }
+        
+        const key = btn.getAttribute('data-key');
+        const cmd = btn.getAttribute('data-cmd');
+        
+        if (key || cmd) {
+          const code = parseInt(btn.getAttribute('data-code') || '0');
+          const isCtrl = btn.getAttribute('data-ctrl') === 'true';
+          const theIframe = getActiveIframe();
+          const iframeDoc = theIframe && theIframe.contentWindow ? theIframe.contentWindow.document : null;
+          if (!iframeDoc) return;
+          const target = iframeDoc.querySelector('.xterm-helper-textarea') || iframeDoc.querySelector('.xterm-screen');
+          
+          if (target) {
+            if (cmd) {
+              const dt = new DataTransfer();
+              dt.setData('text/plain', cmd + '\r');
+              target.dispatchEvent(new ClipboardEvent('paste', {
+                  clipboardData: dt,
+                  bubbles: true,
+                  cancelable: true
+              }));
+              setTimeout(() => {
+                target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+              }, 10);
+            } else {
+              const seqMap = {
+                'CtrlO': '\x0f',
+                'CtrlC': '\x03',
+                'CtrlZ': '\x1a',
+                'CtrlD': '\x04',
+                'Escape': '\x1b',
+                'Tab': '\x09',
+                'Enter': '\r',
+                'ArrowUp': '\x1b[A',
+                'ArrowDown': '\x1b[B',
+                'ArrowLeft': '\x1b[D',
+                'ArrowRight': '\x1b[C',
+                'Home': '\x1b[H',
+                'End': '\x1b[F',
+                'PageUp': '\x1b[5~',
+                'PageDown': '\x1b[6~'
+              };
+
+              const win = theIframe.contentWindow;
+              const term = win && (win.term || win.t || (win.ttyd && win.ttyd.term));
+              const charSeq = seqMap[key];
+
+              if (target && typeof target.focus === 'function') {
+                try { target.focus(); } catch(e) {}
+              }
+
+              if (charSeq && term && term._core && term._core._coreService && typeof term._core._coreService.triggerDataEvent === 'function') {
+                term._core._coreService.triggerDataEvent(charSeq);
+              } else {
+                let evKey = key;
+                let evCode = key;
+                if (key === 'CtrlO') { evKey = 'o'; evCode = 'KeyO'; }
+                else if (key === 'CtrlC') { evKey = 'c'; evCode = 'KeyC'; }
+                else if (key === 'CtrlZ') { evKey = 'z'; evCode = 'KeyZ'; }
+                else if (key === 'CtrlD') { evKey = 'd'; evCode = 'KeyD'; }
+                
+                target.dispatchEvent(new KeyboardEvent('keydown', {
+                  key: evKey,
+                  code: evCode,
+                  keyCode: code,
+                  which: code,
+                  ctrlKey: isCtrl,
+                  bubbles: true
+                }));
+              }
+            }
+          }
+        } else if (btn.classList.contains('paste-menu-btn')) {
+          if (typeof window.pasteFromClipboard === 'function') {
+            window.pasteFromClipboard();
+          }
+        }
+      });
+    });
+
+    function showLoader(text, showProgress = false) {
+      document.getElementById('loader-text').innerText = text;
+      document.getElementById('loader-progress-container').style.display = showProgress ? 'block' : 'none';
+      document.getElementById('loader-progress-bar').style.width = '0%';
+      document.getElementById('loader-modal').classList.add('show');
+    }
+
+    function updateProgress(percent, text) {
+      if (text) document.getElementById('loader-text').innerText = text;
+      document.getElementById('loader-progress-bar').style.width = percent + '%';
+    }
+
+    function hideLoader() {
+      setTimeout(() => {
+        document.getElementById('loader-modal').classList.remove('show');
+      }, 1000);
+    }
+
+    async function exportBackup() {
+      document.getElementById('extra-keys-menu').classList.remove('show');
+      showLoader(t('preparing_export'), false);
+      
+      setTimeout(() => {
+        hideLoader();
+      }, 3000);
+      
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = 'export_backup';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    async function importBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById('extra-keys-menu').classList.remove('show');
+      
+      const proceed = confirm(t('import_confirm'));
+      if (!proceed) {
+        event.target.value = '';
+        return;
+      }
+      
+      showLoader(t('starting_restore'), true);
+      
+      const chunkSize = 10 * 1024 * 1024;
+      const totalChunks = Math.ceil(file.size / chunkSize);
+      
+      try {
+        for (let i = 0; i < totalChunks; i++) {
+          const start = i * chunkSize;
+          const end = Math.min(start + chunkSize, file.size);
+          const chunk = file.slice(start, end);
+          
+          const formData = new FormData();
+          formData.append('file', chunk);
+          
+          const percent = Math.round((i / totalChunks) * 100);
+          updateProgress(percent, `${t('uploading_backup')} ${percent}%`);
+          
+          const res = await fetch(`import_chunk?chunk_index=${i}&total_chunks=${totalChunks}`, {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text);
+          }
+        }
+        
+        updateProgress(100, t('extracting_restarting'));
+        alert(t('import_success'));
+      } catch (err) {
+        alert(t('import_failed') + err.message);
+      } finally {
+        hideLoader();
+        event.target.value = '';
+      }
+    }
+
+    // T3 Code Mobile Pairing Helper
+    async 
+    // T3 Connect Modal Handling
+    async function openT3ConnectModal() {
+      const modal = document.getElementById('t3-connect-modal');
+      modal.style.display = 'flex';
+      await refreshT3Connect();
+    }
+
+    function closeT3ConnectModal() {
+      document.getElementById('t3-connect-modal').style.display = 'none';
+    }
+
+    async function refreshT3Connect() {
+      const badge = document.getElementById('t3-connect-status-badge');
+      const expSpan = document.getElementById('t3-connect-exposure');
+      const relaySpan = document.getElementById('t3-connect-relay');
+      const authSpan = document.getElementById('t3-connect-auth');
+      const tunnelSpan = document.getElementById('t3-connect-tunnel');
+      
+      badge.textContent = 'Querying T3 Connect service...';
+      badge.style.background = 'rgba(31, 111, 235, 0.15)';
+      badge.style.color = '#58a6ff';
+
+      try {
+        const res = await fetch('t3_connect_status');
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+          expSpan.textContent = data.exposure;
+          relaySpan.textContent = data.relay;
+          authSpan.textContent = data.authorization;
+          tunnelSpan.textContent = data.connected ? '✓ Connected' : '✗ Disconnected';
+
+          if (data.connected) {
+            badge.textContent = '✓ T3 Connect Active & Reacheable';
+            badge.style.background = 'rgba(46, 160, 67, 0.15)';
+            badge.style.color = '#3fb950';
+            badge.style.borderColor = 'rgba(46, 160, 67, 0.4)';
+          } else {
+            badge.textContent = '● T3 Connect Available (Not Connected)';
+            badge.style.background = 'rgba(210, 153, 34, 0.15)';
+            badge.style.color = '#d29922';
+            badge.style.borderColor = 'rgba(210, 153, 34, 0.4)';
+          }
+        } else {
+          badge.textContent = 'Error: ' + (data.message || 'Could not query status');
+        }
+      } catch (err) {
+        badge.textContent = 'T3 server not reachable';
+      }
+    }
+
+    async function linkT3Connect() {
+      const badge = document.getElementById('t3-connect-status-badge');
+      badge.textContent = 'Running t3 up --connect...';
+      try {
+        const res = await fetch('t3_connect_link');
+        const data = await res.json();
+        showToast('T3 Connect initiated! Check terminal for login if required.');
+        await refreshT3Connect();
+      } catch (err) {
+        showToast('Failed to trigger T3 Connect');
+      }
+    }
+
+    function openT3PairModal() {
+      const modal = document.getElementById('t3-pair-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      await refreshT3Token();
+    }
+
+    function closeT3PairModal() {
+      const modal = document.getElementById('t3-pair-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function refreshT3Token() {
+      const qrSvg = document.getElementById('t3-qr-svg');
+      const urlInput = document.getElementById('t3-pair-url-input');
+      const appLink = document.getElementById('t3-app-link');
+      const statusBadge = document.getElementById('t3-pair-status');
+      const tokenInfo = document.getElementById('t3-token-info');
+
+      if (qrSvg) qrSvg.innerHTML = '<div style="color:#666;font-size:12px;padding:30px;">Requesting token...</div>';
+
+      try {
+        const res = await fetch('t3_pair');
+        const data = await res.json();
+        if (data.status === 'success') {
+          if (data.qr_svg && qrSvg) {
+            qrSvg.innerHTML = data.qr_svg;
+          }
+          if (urlInput) urlInput.value = data.pairing_url || '';
+          if (appLink) {
+            appLink.href = data.app_link || data.pairing_url || '#';
+          }
+          if (tokenInfo) {
+            tokenInfo.textContent = `Token: ${data.token || 'Active'} (Expires in 5 minutes)`;
+          }
+          if (statusBadge) {
+            statusBadge.textContent = '🟢 T3 Server Online on Port 3773';
+            statusBadge.style.color = '#3fb950';
+          }
+        } else {
+          if (qrSvg) qrSvg.innerHTML = '<div style="color:#cf222e;font-size:12px;padding:20px;">' + (data.message || 'Error generating token') + '</div>';
+          if (statusBadge) {
+            statusBadge.textContent = '⚠️ T3 Server Error';
+            statusBadge.style.color = '#cf222e';
+          }
+        }
+      } catch (err) {
+        if (qrSvg) qrSvg.innerHTML = '<div style="color:#cf222e;font-size:12px;padding:20px;">Failed to reach T3 API: ' + err.message + '</div>';
+        if (statusBadge) {
+          statusBadge.textContent = '❌ T3 Server Offline';
+          statusBadge.style.color = '#cf222e';
+        }
+      }
+    }
+
+    function copyT3PairUrl() {
+      const input = document.getElementById('t3-pair-url-input');
+      if (input && input.value) {
+        navigator.clipboard.writeText(input.value).then(() => {
+          showNotification('Pairing URL copied to clipboard!');
+        }).catch(() => {
+          input.select();
+          document.execCommand('copy');
+          showNotification('Pairing URL copied to clipboard!');
+        });
+      }
+    }
+  </script>
+</body>
+</html>
