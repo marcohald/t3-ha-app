@@ -3,7 +3,7 @@ description: "AI-assisted coding terminal, T3 Code server with mobile companion 
 version: "1.0.0"
 slug: "t3-ha-app"
 url: "https://github.com/marcohald/t3-ha-app"
-image: "ghcr.io/marcohald/{arch}-addon-t3-ha-app"
+image: "ghcr.io/marcohald/t3-ha-app"
 panel_icon: "mdi:code-braces"
 panel_title: "T3 Code"
 arch:

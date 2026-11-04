@@ -11,7 +11,7 @@ on:
 
 env:
   ARCHITECTURES: '["amd64", "aarch64"]'
-  IMAGE_NAME: addon-t3-ha-app
+  IMAGE_NAME: t3-ha-app
   REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
 
 permissions:
