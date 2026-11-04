@@ -50,10 +50,16 @@ T3_PORT=$(jq -r '.port // 3774' /data/options.json 2>/dev/null || echo "3774")
 export T3_PORT
 
 # Start T3 Code Server in background on configured LAN port
-echo "Starting T3 Code server with 't3 serve --lan --port $T3_PORT'..."
-/usr/local/bin/t3 serve --lan --port "$T3_PORT" --auto-bootstrap-project-from-cwd /homeassistant > /data/t3_serve.log 2>&1 &
+LAN_ARG="--lan"
+if [ -f "/data/.t3/service.env" ]; then
+    if grep -q "T3CODE_LAN=false" /data/.t3/service.env; then
+        LAN_ARG=""
+    fi
+fi
+echo "Starting T3 Code server with 't3 serve $LAN_ARG --port $T3_PORT'..."
+/usr/local/bin/t3 serve $LAN_ARG --port "$T3_PORT" --auto-bootstrap-project-from-cwd /homeassistant > /data/t3_serve.log 2>&1 &
 T3_PID=$!
-echo "T3 Code server process launched with PID $T3_PID on port $T3_PORT."
+echo "T3 Code server process launched with PID $T3_PID on port $T3_PORT (LAN: ${LAN_ARG:-disabled})."
 
 # Configure MCP Servers for Home Assistant
 echo "Configuring MCP Servers..."

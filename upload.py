@@ -407,6 +407,78 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
 
+        elif parsed_path.path == '/t3_lan':
+            query = parse_qs(parsed_path.query)
+            action = query.get('action', ['status'])[0]
+            try:
+                env = dict(os.environ, HOME='/data', T3CODE_HOME='/data/.t3')
+
+                def get_current_lan():
+                    try:
+                        st = subprocess.run(['/usr/local/bin/t3', 'status', '--json'], env=env, capture_output=True, text=True, timeout=5)
+                        data = json.loads(st.stdout)
+                        return data.get('lan', {}).get('enabled', False)
+                    except Exception:
+                        if os.path.exists('/data/.t3/service.env'):
+                            with open('/data/.t3/service.env', 'r') as f:
+                                c = f.read()
+                                if 'T3CODE_LAN=false' in c: return False
+                                if 'T3CODE_LAN=true' in c: return True
+                        return False
+
+                if action == 'status':
+                    is_enabled = get_current_lan()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'status': 'success',
+                        'enabled': is_enabled,
+                        'message': 'enabled' if is_enabled else 'disabled'
+                    }).encode())
+                    return
+
+                if action == 'toggle':
+                    current_enabled = get_current_lan()
+                    target_enable = not current_enabled
+                elif action == 'enable':
+                    target_enable = True
+                elif action == 'disable':
+                    target_enable = False
+                else:
+                    target_enable = True
+
+                flag = '--lan' if target_enable else '--no-lan'
+                subprocess.run(['/usr/local/bin/t3', 'up', flag], env=env, capture_output=True, text=True, timeout=10)
+
+                t3_port = os.environ.get('T3_PORT', '3774')
+                subprocess.run(['pkill', '-f', '/usr/local/bin/t3 serve'], capture_output=True)
+                time.sleep(1)
+
+                serve_cmd = ['/usr/local/bin/t3', 'serve', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant']
+                if target_enable:
+                    serve_cmd.insert(2, '--lan')
+
+                with open('/data/t3_serve.log', 'a') as log_f:
+                    subprocess.Popen(serve_cmd, env=env, stdout=log_f, stderr=subprocess.STDOUT)
+
+                time.sleep(1)
+                is_enabled = get_current_lan()
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'status': 'success',
+                    'enabled': is_enabled,
+                    'message': f"Local LAN connections {'enabled' if is_enabled else 'disabled'}"
+                }).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+
         elif parsed_path.path == '/run_quick_cmd':
             query = parse_qs(parsed_path.query)
             cmd_key = query.get('cmd', [''])[0]

@@ -837,7 +837,36 @@
           </div>
         </div>
 
-        <!-- 3. Diagnostics & Maintenance -->
+        <!-- 3. Local Network Access (LAN) -->
+        <div class="qa-card">
+          <div class="qa-card-header">
+            <h3 class="qa-card-title">
+              <span>📡</span> <span>Lokale Verbindungen (LAN Access)</span>
+            </h3>
+            <span id="qa-lan-badge" class="qa-badge" style="background: rgba(110, 118, 129, 0.15); color: #8b949e; border-color: rgba(110, 118, 129, 0.4);">
+              Prüfe Status...
+            </span>
+          </div>
+          <div class="qa-card-desc">
+            Steuert, ob Geräte im lokalen Heimnetzwerk (LAN &amp; Wi-Fi) und Tailnet direkt über Port 3774 mit T3 Code und der Mobile App kommunizieren dürfen. Bei Deaktivierung ist der Zugriff auf Home Assistant Ingress und T3 Connect beschränkt.
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+            <button id="qa-lan-btn" onclick="toggleLanAccess()" class="qa-action-btn qa-primary-btn" style="font-size: 13px; padding: 10px 18px;">
+              <span>📡</span> <span id="qa-lan-btn-text">Lokale Verbindungen umschalten</span>
+            </button>
+            <button onclick="runInTerminal('t3 up --lan')" class="qa-action-btn" title="Befehl 't3 up --lan' im Terminal ausführen">
+              <span>🟢</span> <span>t3 up --lan</span>
+            </button>
+            <button onclick="runInTerminal('t3 up --no-lan')" class="qa-action-btn" title="Befehl 't3 up --no-lan' im Terminal ausführen">
+              <span>⚪</span> <span>t3 up --no-lan</span>
+            </button>
+            <button onclick="refreshLanStatus()" class="qa-action-btn" title="Status aktualisieren">
+              <span>🔄</span> <span>Status prüfen</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. Diagnostics & Maintenance -->
         <div class="qa-card">
           <div class="qa-card-header">
             <h3 class="qa-card-title">
@@ -1054,8 +1083,13 @@
         <button onclick="closeT3PairModal()" style="background: none; border: none; color: var(--text-secondary, #aaa); font-size: 20px; cursor: pointer; padding: 4px;">✕</button>
       </div>
       
-      <div id="t3-pair-status" style="font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4); margin-bottom: 14px; font-weight: 500;">
-        🟢 T3 Server Online on Port 3773
+      <div style="display: flex; gap: 8px; justify-content: center; align-items: center; margin-bottom: 14px;">
+        <div id="t3-pair-status" style="flex: 1; font-size: 11px; padding: 6px 10px; border-radius: 6px; background: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4); font-weight: 500;">
+          🟢 T3 Server Online
+        </div>
+        <button id="t3-modal-lan-btn" onclick="toggleLanAccess()" style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.08); color: var(--text-main); border: 1px solid var(--border-color); cursor: pointer;" title="Lokale Verbindungen (LAN) ein-/ausschalten">
+          <span>📡</span> <span id="t3-modal-lan-text">LAN: Aktiviert</span>
+        </button>
       </div>
       
       <div id="t3-qr-container" style="background: #ffffff; padding: 10px; border-radius: 8px; display: inline-flex; justify-content: center; align-items: center; margin: 0 auto 12px auto; width: 220px; height: 220px; max-width: 85vw; aspect-ratio: 1 / 1; box-sizing: border-box;">
@@ -2579,6 +2613,94 @@
           srvBadge.style.borderColor = data.running ? 'rgba(46, 160, 67, 0.4)' : 'rgba(218, 54, 51, 0.4)';
         }
       } catch(e) {}
+
+      // 3. Check T3 LAN status
+      window.refreshLanStatus();
+    };
+
+    window.toggleLanAccess = async function(explicitAction) {
+      const btn = document.getElementById('qa-lan-btn');
+      const badge = document.getElementById('qa-lan-badge');
+      const modalBtn = document.getElementById('t3-modal-lan-btn');
+
+      if (btn) btn.disabled = true;
+      if (modalBtn) modalBtn.disabled = true;
+      if (badge) badge.textContent = '⏳ Wird umgeschaltet...';
+
+      const act = explicitAction || 'toggle';
+      try {
+        const res = await fetch(`t3_lan?action=${act}`);
+        const data = await res.json();
+        if (data.status === 'success') {
+          updateLanUI(data.enabled);
+          showNotification(data.enabled ? '✓ Lokale Verbindungen (LAN) aktiviert!' : '✓ Lokale Verbindungen (LAN) deaktiviert!');
+        } else {
+          showNotification('Fehler bei LAN-Einstellung: ' + (data.message || 'Unbekannt'));
+        }
+      } catch (err) {
+        showNotification('Verbindungsfehler: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (modalBtn) modalBtn.disabled = false;
+        window.refreshLanStatus();
+        if (document.getElementById('t3-pair-modal')?.style.display === 'flex') {
+          refreshT3Token();
+        }
+      }
+    };
+
+    function updateLanUI(enabled) {
+      const btn = document.getElementById('qa-lan-btn');
+      const btnText = document.getElementById('qa-lan-btn-text');
+      const badge = document.getElementById('qa-lan-badge');
+      const modalBtn = document.getElementById('t3-modal-lan-btn');
+      const modalText = document.getElementById('t3-modal-lan-text');
+
+      if (badge) {
+        if (enabled) {
+          badge.innerHTML = '🟢 Aktiviert (LAN offen)';
+          badge.style.background = 'rgba(46, 160, 67, 0.15)';
+          badge.style.color = '#3fb950';
+          badge.style.borderColor = 'rgba(46, 160, 67, 0.4)';
+        } else {
+          badge.innerHTML = '⚪ Deaktiviert (Nur Ingress)';
+          badge.style.background = 'rgba(110, 118, 129, 0.15)';
+          badge.style.color = '#8b949e';
+          badge.style.borderColor = 'rgba(110, 118, 129, 0.4)';
+        }
+      }
+
+      if (btn) {
+        if (enabled) {
+          if (btnText) btnText.innerText = '✕ Lokale Verbindungen sperren';
+          btn.style.background = 'rgba(218, 54, 51, 0.2)';
+          btn.style.color = '#f85149';
+          btn.style.borderColor = 'rgba(218, 54, 51, 0.4)';
+        } else {
+          if (btnText) btnText.innerText = '📡 Lokale Verbindungen erlauben';
+          btn.style.background = '#1f6feb';
+          btn.style.color = '#ffffff';
+          btn.style.borderColor = 'transparent';
+        }
+      }
+
+      if (modalText) {
+        modalText.innerText = enabled ? 'LAN: Aktiviert' : 'LAN: Deaktiviert';
+      }
+      if (modalBtn) {
+        modalBtn.style.color = enabled ? '#3fb950' : '#e3b341';
+        modalBtn.style.borderColor = enabled ? 'rgba(46, 160, 67, 0.4)' : 'rgba(227, 179, 65, 0.4)';
+      }
+    }
+
+    window.refreshLanStatus = async function() {
+      try {
+        const res = await fetch('t3_lan?action=status');
+        const data = await res.json();
+        if (data.status === 'success') {
+          updateLanUI(data.enabled === true);
+        }
+      } catch(e) {}
     };
 
     window.executeQuickCmd = async function(cmdKey, btnElem) {
@@ -3599,6 +3721,9 @@
       const modal = document.getElementById('t3-pair-modal');
       if (!modal) return;
       modal.style.display = 'flex';
+      if (typeof window.refreshLanStatus === 'function') {
+        window.refreshLanStatus();
+      }
       await refreshT3Token();
     }
 
