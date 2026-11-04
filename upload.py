@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import urllib.request
 import re
+import threading
+import time
 from urllib.parse import urlparse, parse_qs
 
 UPLOAD_DIR = '/tmp/uploads'
@@ -39,6 +41,62 @@ def ascii_qr_to_svg(qr_text, scale=8):
                 rects.append(f'<rect x="{x*scale}" y="{y_bot*scale}" width="{scale}" height="{scale*2}" fill="#000"/>')
     
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w*scale} {h*scale}" width="{w*scale}" height="{h*scale}"><rect width="100%" height="100%" fill="#fff"/>' + ''.join(rects) + '</svg>'
+
+_t3_connect_lock = threading.Lock()
+_t3_connect_proc = None
+_t3_connect_info = {
+    'status': 'idle',
+    'url': None,
+    'code': None,
+    'message': None
+}
+
+def _run_t3_connect_worker():
+    global _t3_connect_proc, _t3_connect_info
+    try:
+        env = dict(os.environ, T3CODE_HOME='/data/.t3')
+        # Notify tmux active terminal session
+        subprocess.run(["tmux", "send-keys", "-t", "t3_lite_1", "t3 connect", "C-m"], capture_output=True)
+
+        _t3_connect_proc = subprocess.Popen(
+            ['/usr/local/bin/t3', 'connect', 'link', '--headless'],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        for line in _t3_connect_proc.stdout:
+            line_str = line.strip()
+            if not line_str:
+                continue
+            url_match = re.search(r'(https://accounts\.t3\.codes/device\S*)', line_str)
+            if url_match:
+                _t3_connect_info['url'] = url_match.group(1)
+                _t3_connect_info['status'] = 'auth_required'
+            code_match = re.search(r'Code:\s*([A-Z0-9-]+)', line_str)
+            if code_match:
+                _t3_connect_info['code'] = code_match.group(1)
+            if "Authorized as" in line_str or "already authorized" in line_str:
+                _t3_connect_info['status'] = 'authorized'
+                _t3_connect_info['message'] = line_str
+
+        _t3_connect_proc.wait()
+        if _t3_connect_proc.returncode == 0:
+            _t3_connect_info['status'] = 'completed'
+            # Restart t3 serve to pick up newly provisioned credentials and establish tunnel
+            t3_port = int(os.environ.get('T3_PORT', 3774))
+            subprocess.run(['fuser', '-k', f'{t3_port}/tcp'], capture_output=True)
+            subprocess.Popen(
+                ['/usr/local/bin/t3', 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
+                env=env
+            )
+        else:
+            if _t3_connect_info['status'] != 'auth_required':
+                _t3_connect_info['status'] = 'error'
+    except Exception as e:
+        _t3_connect_info['status'] = 'error'
+        _t3_connect_info['message'] = str(e)
 
 class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
@@ -120,8 +178,8 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             query = parse_qs(parsed_path.query)
             session_id = query.get('session_id', [None])[0]
             if session_id and session_id.isdigit():
-                session_name = f"t3_{session_id}"
-                subprocess.run(["tmux", "kill-session", "-t", session_name], capture_output=True)
+                subprocess.run(["tmux", "kill-session", "-t", f"t3_lite_{session_id}"], capture_output=True)
+                subprocess.run(["tmux", "kill-session", "-t", f"t3_{session_id}"], capture_output=True)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -249,27 +307,38 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
 
         elif parsed_path.path == '/t3_connect_link':
+            global _t3_connect_proc, _t3_connect_info
+            # First check if already connected
             try:
                 env = dict(os.environ, T3CODE_HOME='/data/.t3')
-                res = subprocess.run(
-                    ['/usr/local/bin/t3', 'up', '--connect', '--yes'],
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=15
-                )
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({
-                    'status': 'success',
-                    'output': res.stdout + res.stderr
-                }).encode())
-            except Exception as e:
-                self.send_response(500)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+                chk = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=5)
+                if "Tunnel connected" in chk.stdout or "Other devices can reach this machine" in chk.stdout:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'status': 'already_connected'}).encode())
+                    return
+            except Exception:
+                pass
+
+            with _t3_connect_lock:
+                if _t3_connect_proc is None or _t3_connect_proc.poll() is not None:
+                    _t3_connect_info = {'status': 'starting', 'url': None, 'code': None, 'message': None}
+                    t = threading.Thread(target=_run_t3_connect_worker, daemon=True)
+                    t.start()
+
+            # Wait up to 3.5 seconds for URL / Code to be extracted
+            for _ in range(35):
+                if _t3_connect_info.get('url') and _t3_connect_info.get('code'):
+                    break
+                if _t3_connect_info.get('status') in ('completed', 'already_connected', 'error'):
+                    break
+                time.sleep(0.1)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(_t3_connect_info).encode())
 
         elif parsed_path.path == '/version_check':
             try:

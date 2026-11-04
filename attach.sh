@@ -1,6 +1,6 @@
 #!/bin/bash
 SESSION_ID=${1:-1}
-SESSION_NAME="t3_${SESSION_ID}"
+SESSION_NAME="t3_lite_${SESSION_ID}"
 
 export TERM=xterm-256color
 export LANG=C.UTF-8
