@@ -87,6 +87,7 @@ To connect to your T3 Code instance securely from outside your home network:
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `port` | integer | `3774` | LAN port used by the T3 Code server for local network discovery and companion app pairing. |
+| `server_name` | string | *empty* | Custom display and environment name for T3 Code. If empty, the Home Assistant FQDN is used automatically. |
 | `ha_token` | string | *empty* | Long-lived access token for Home Assistant Core MCP integration. |
 | `mqtt_host` | string | *empty* | MQTT Broker address (e.g. `core-mosquitto`) for Zigbee2MQTT MCP integration. |
 | `mqtt_port` | string | `1883` | MQTT Broker port. |

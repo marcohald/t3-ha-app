@@ -20,6 +20,11 @@ if [ -w /etc/resolv.conf ]; then
     cat /tmp/resolv.conf > /etc/resolv.conf 2>/dev/null || true
 fi
 
+# Ensure gh CLI binary symlink exists in /usr/bin
+if [ -f /usr/local/bin/gh ] && [ ! -e /usr/bin/gh ]; then
+    ln -sf /usr/local/bin/gh /usr/bin/gh 2>/dev/null || true
+fi
+
 # Persistent File Overlay System (/data/overlay -> /)
 if [ -d /data/overlay ]; then
     echo "[Overlay] Restoring persistent file overlays from /data/overlay..."
@@ -27,6 +32,27 @@ if [ -d /data/overlay ]; then
 fi
 if [ -f /data/overlay/opt/t3code/html/index.html ]; then
     ln -sf /data/overlay/opt/t3code/html/index.html /opt/t3code/html/index.html
+fi
+
+# Configure Server / Environment Display Name
+echo "Configuring T3 Code server/environment name..."
+AUTH_TOKEN="${SUPERVISOR_TOKEN:-$HASSIO_TOKEN}"
+SERVER_NAME=$(jq -r '.server_name // .addon_name // empty' /data/options.json 2>/dev/null || true)
+if [ -z "$SERVER_NAME" ] && [ -n "$AUTH_TOKEN" ]; then
+    SERVER_NAME=$(curl -s -H "Authorization: Bearer $AUTH_TOKEN" http://supervisor/core/api/config 2>/dev/null | \
+        jq -r '.external_url // .internal_url // empty' 2>/dev/null | \
+        sed -E 's|^https?://||; s|:[0-9]+/?$||; s|/$||')
+fi
+
+if [ -n "$SERVER_NAME" ]; then
+    echo "Using server name: $SERVER_NAME"
+    echo "PRETTY_HOSTNAME=\"$SERVER_NAME\"" > /etc/machine-info 2>/dev/null || true
+    mkdir -p /data/overlay/etc /data/.t3
+    echo "PRETTY_HOSTNAME=\"$SERVER_NAME\"" > /data/overlay/etc/machine-info
+    echo "$SERVER_NAME" > /data/overlay/etc/hostname
+    echo "$SERVER_NAME" > /etc/hostname 2>/dev/null || true
+    echo "$SERVER_NAME" > /data/.t3/usage-host-id
+    export T3CODE_HOST_ID="$SERVER_NAME"
 fi
 
 # Background auto-update check for T3 CLI
@@ -39,11 +65,11 @@ echo "Checking for T3 CLI updates..."
 mkdir -p /data/.t3 /homeassistant /var/log/nginx /tmp/uploads
 
 # Configure readline for UTF-8 input
-cat << 'EOF' > /data/.inputrc
+cat << 'INPUTRC_EOF' > /data/.inputrc
 set input-meta on
 set output-meta on
 set convert-meta off
-EOF
+INPUTRC_EOF
 
 # Read configured LAN port (default 3774)
 T3_PORT=$(jq -r '.port // 3774' /data/options.json 2>/dev/null || echo "3774")
@@ -69,11 +95,11 @@ MQTT_PORT=$(jq -r '.mqtt_port // "1883"' /data/options.json 2>/dev/null || true)
 MQTT_USER=$(jq -r '.mqtt_user // empty' /data/options.json 2>/dev/null || true)
 MQTT_PASS=$(jq -r '.mqtt_pass // empty' /data/options.json 2>/dev/null || true)
 
-cat << 'EOF' > /homeassistant/mcp.json
+cat << 'MCP_EOF' > /homeassistant/mcp.json
 {
   "mcpServers": {}
 }
-EOF
+MCP_EOF
 
 if [ -n "$HA_TOKEN" ]; then
     echo "Adding Home Assistant Core MCP server..."

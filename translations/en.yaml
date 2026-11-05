@@ -1,4 +1,10 @@
 configuration:
+  port:
+    name: "T3 Server Port"
+    description: "LAN port used by the T3 Code server for local network discovery and companion app pairing."
+  server_name:
+    name: "Server / Add-on Name"
+    description: "Custom display name for the T3 Code server. If empty, the Home Assistant FQDN or hostname is used automatically."
   ha_token:
     name: "Home Assistant Long-Lived Access Token"
     description: "Optional token for Home Assistant Core API domotics access via MCP."

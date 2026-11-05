@@ -1,6 +1,6 @@
 name: "T3 Code"
 description: "AI-assisted coding terminal, T3 Code server with mobile companion app pairing, and T3 Connect remote access"
-version: "1.0.0"
+version: "1.0.1"
 slug: "t3-ha-app"
 url: "https://github.com/marcohald/t3-ha-app"
 image: "ghcr.io/marcohald/t3-ha-app"
@@ -28,6 +28,7 @@ ports_description:
   3774/tcp: "T3 Code server (LAN & Mobile App Pairing)"
 options:
   port: 3774
+  server_name: ""
   ha_token: ""
   mqtt_host: ""
   mqtt_port: "1883"
@@ -35,6 +36,7 @@ options:
   mqtt_pass: ""
 schema:
   port: "int?"
+  server_name: "str?"
   ha_token: "str?"
   mqtt_host: "str?"
   mqtt_port: "str?"

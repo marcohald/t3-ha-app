@@ -5,7 +5,7 @@ ARG BUILD_ARCH=amd64
 ARG GH_VERSION=2.62.0
 
 LABEL \
-    io.hass.version="1.0.0" \
+    io.hass.version="1.0.1" \
     io.hass.type="app" \
     io.hass.arch="amd64|aarch64" \
     org.opencontainers.image.title="T3 Code" \
@@ -47,7 +47,8 @@ RUN case "${BUILD_ARCH}" in \
     esac && \
     curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${GH_ARCH}.tar.gz" | \
     tar -xz -C /usr/local/bin --strip-components=2 "gh_${GH_VERSION}_linux_${GH_ARCH}/bin/gh" && \
-    chmod +x /usr/local/bin/gh
+    chmod +x /usr/local/bin/gh && \
+    ln -sf /usr/local/bin/gh /usr/bin/gh
 
 # Setup application directories and workspace symlinks
 RUN mkdir -p /opt/t3code/html /homeassistant /var/log/nginx && \

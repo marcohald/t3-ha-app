@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 - Automatic FQDN Server Naming & Custom Server Name
+
+- 🏷️ **Automatic Server Naming via HA FQDN**: Automatically discovers and configures the Home Assistant FQDN (from `external_url` or `internal_url`) as the T3 Code server display name and environment host ID.
+- ⚙️ **Configurable Server Name**: Optional `server_name` setting in add-on configuration allows overriding the server name.
+- 🔗 **Persistent Host Identifiers**: Directly manages `/etc/machine-info`, `/data/.t3/usage-host-id`, `/etc/hostname`, and persistent overlays.
+- 🐙 **Enhanced GitHub CLI Symlink**: Guaranteed `/usr/bin/gh` binary path compatibility.
+
+
 ## 1.0.0 - Initial Lightweight T3 Code Release
 
 - 🚀 **Dedicated T3 Code Server**: Powered by `t3 serve --lan --port 3773` with auto-project bootstrapping at `/homeassistant`.
