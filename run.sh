@@ -99,6 +99,9 @@ fi
 # Install the bundled Home Assistant skill into every agent skill root on /data.
 /opt/t3code/skills.sh
 
+# Ensure Claude Code CLI is set up in /data/.local/bin
+/opt/t3code/claude-runtime.sh || true
+
 # Configure readline for UTF-8 input
 cat << 'INPUTRC_EOF' > /data/.inputrc
 set input-meta on
@@ -118,7 +121,7 @@ if [ -f "/data/.t3/service.env" ]; then
     fi
 fi
 echo "Starting T3 Code server with 't3 serve $LAN_ARG --port $T3_PORT'..."
-"$T3_BIN" serve $LAN_ARG --port "$T3_PORT" --auto-bootstrap-project-from-cwd /homeassistant > /data/t3_serve.log 2>&1 &
+"$T3_BIN" serve $LAN_ARG --port "$T3_PORT" /homeassistant > /data/t3_serve.log 2>&1 &
 T3_PID=$!
 echo "T3 Code server process launched with PID $T3_PID on port $T3_PORT (LAN: ${LAN_ARG:-disabled})."
 

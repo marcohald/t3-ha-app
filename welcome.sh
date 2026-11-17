@@ -22,6 +22,7 @@ echo -e " \033[1;32m[T3 Server]\033[0m   Active on LAN port \033[1;33m3774\033[0
 echo -e " \033[1;35m[Mobile App]\033[0m  Pair mobile app anytime: \033[1;33mt3 pair\033[0m"
 echo -e " \033[1;34m[T3 Connect]\033[0m  Remote access relay: \033[1;33mt3 connect\033[0m or \033[1;33mt3 up --connect\033[0m"
 echo -e " \033[1;32m[GitHub CLI]\033[0m  GitHub CLI available: \033[1;33mgh auth login\033[0m"
+echo -e " \033[1;35m[Claude CLI] [0m Claude Code CLI available: \033[1;33mclaude\033[0m"
 echo -e " \033[1;36m[Persistent]\033[0m  Installs go to \033[1;33m/data/tools\033[0m (survives add-on updates)"
 echo -e " \033[1;36m[HA Skill]\033[0m    \033[1;33mhomeassistant\033[0m skill ready: \033[1;33mha_ws.py ping\033[0m"
 echo -e " \033[1;33m[Workspace]\033[0m   \033[0;32m/homeassistant\033[0m (Home Assistant config & share), \033[0;32m/data/workspace\033[0m"

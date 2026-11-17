@@ -1,6 +1,6 @@
 name: "T3 Code"
 description: "AI-assisted coding terminal, T3 Code server with mobile companion app pairing, and T3 Connect remote access"
-version: "1.1.10"
+version: "1.1.11"
 slug: "t3-ha-app"
 url: "https://github.com/marcohald/t3-ha-app"
 image: "ghcr.io/marcohald/t3-ha-app"

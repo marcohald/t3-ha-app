@@ -7,6 +7,10 @@ on:
       - master
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 env:
@@ -46,9 +50,29 @@ jobs:
           image-name: ${{ env.IMAGE_NAME }}
           registry-prefix: ${{ env.REGISTRY_PREFIX }}
 
+  # Step 1: Build & integration test the amd64 image on a mock Home Assistant container environment
+  test:
+    name: Test add-on container & services (amd64)
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build local test image
+        run: |
+          docker build \
+            --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION="${{ needs.init.outputs.version }}" \
+            -t "local/t3-ha-app:test" .
+
+      - name: Run Integration Tests
+        run: |
+          ./tests/test-addon.sh "local/t3-ha-app:test"
+
   build:
     name: Build ${{ matrix.arch }} image
-    needs: init
+    needs: [init, test]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -75,12 +99,13 @@ jobs:
             io.hass.name=T3 Code
             io.hass.description=AI-assisted coding terminal, T3 Code server with mobile companion app pairing, and T3 Connect remote access
             io.hass.url=https://github.com/marcohald/t3-ha-app
-          push: "true"
+          push: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
           version: ${{ needs.init.outputs.version }}
 
   manifest:
     name: Publish multi-arch manifest
-    needs: [init, build]
+    needs: [init, test, build]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       id-token: write

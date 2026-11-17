@@ -2,7 +2,7 @@ ARG BUILD_FROM=ubuntu:22.04
 FROM ${BUILD_FROM}
 
 # Passed by the Home Assistant builder as amd64 / aarch64. It must be declared
-# for the gh install step below to see it, otherwise both images get amd64 gh.
+# for the gh/claude install step below to see it, otherwise both images get amd64 binaries.
 ARG BUILD_ARCH
 ARG BUILD_VERSION=0.0.0
 ARG GH_VERSION=2.62.0
@@ -23,7 +23,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANGUAGE=en_US:en \
     T3CODE_HOME=/data/.t3 \
     T3_ADDON_VERSION="${BUILD_VERSION}" \
-    PATH="/data/tools/bin:/usr/local/bin:$PATH"
+    PATH="/data/tools/bin:/data/.local/bin:/usr/local/bin:$PATH"
 
 # Install lightweight runtime dependencies (minimal footprint).
 # python3-websockets backs the bundled Home Assistant skill.
@@ -56,6 +56,18 @@ RUN case "${BUILD_ARCH}" in \
     chmod +x /usr/local/bin/gh && \
     ln -sf /usr/local/bin/gh /usr/bin/gh
 
+# Install Claude Code CLI standalone binary for target architecture
+RUN case "${BUILD_ARCH}" in \
+        amd64)   CLAUDE_PLATFORM="linux-x64" ;; \
+        aarch64) CLAUDE_PLATFORM="linux-arm64" ;; \
+        *) CLAUDE_PLATFORM="linux-x64" ;; \
+    esac && \
+    CLAUDE_VER=$(curl -fsSL "https://downloads.claude.ai/claude-code-releases/latest") && \
+    curl -fsSL "https://downloads.claude.ai/claude-code-releases/${CLAUDE_VER}/${CLAUDE_PLATFORM}/claude" -o /usr/local/bin/claude && \
+    chmod +x /usr/local/bin/claude && \
+    ln -sf /usr/local/bin/claude /usr/bin/claude && \
+    /usr/local/bin/claude --version
+
 # Setup application directories and workspace symlinks
 RUN mkdir -p /opt/t3code/html /homeassistant /var/log/nginx && \
     ln -s /config /homeassistant/config && \
@@ -85,13 +97,14 @@ COPY welcome.sh /opt/t3code/welcome.sh
 COPY persist.sh /opt/t3code/persist.sh
 COPY skills.sh /opt/t3code/skills.sh
 COPY t3-runtime.sh /opt/t3code/t3-runtime.sh
+COPY claude-runtime.sh /opt/t3code/claude-runtime.sh
 COPY skill/homeassistant/ /opt/t3code/skill/homeassistant/
 COPY tmux.conf /opt/t3code/tmux.conf
 COPY tmux.conf /etc/tmux.conf
 COPY run.sh /run.sh
 
 RUN chmod +x /opt/t3code/attach.sh /opt/t3code/welcome.sh /opt/t3code/persist.sh \
-        /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /run.sh \
+        /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /opt/t3code/claude-runtime.sh /run.sh \
         /opt/t3code/skill/homeassistant/scripts/*.py
 
 CMD [ "/run.sh" ]

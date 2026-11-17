@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.11 (2026-11-17)
+
+- 🧪 **Pre-publish CI integration test**: added container test suite verifying all services (`t3 serve`, `nginx`, `upload.py`), CLI tools and endpoints before building and publishing images.
+- 🤖 **Claude Code CLI bundled**: native standalone `claude` binary preinstalled in container and mapped persistently to `/data/.local/bin`.
+- 🐛 **Fix `t3 serve` boot failure**: removed deprecated `--auto-bootstrap-project-from-cwd` flag incompatible with T3 Code v0.1.10.
+- 📊 **UI & Status Enhancements**: added Claude CLI version to status report and welcome banner.
+
+
 ## 1.1.10 - Automatic T3 Releases, Persistent Toolchain & Bundled HA Skill
 
 - 🤖 **Automatic T3 Code release tracking**: `.github/workflows/track-t3-releases.yaml` checks `pingdotgg/t3code` every six hours for a new stable release, bumps `t3-version.txt` and the add-on version (`1.<T3 minor>.<T3 patch>`), commits, builds and publishes the multi-arch images itself, verifies the GHCR manifest for `amd64`/`aarch64`, and publishes a GitHub release. Failed builds revert the bump automatically.
