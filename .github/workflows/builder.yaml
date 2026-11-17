@@ -20,6 +20,10 @@ permissions:
 jobs:
   init:
     name: Initialize build
+    # Release commits are built and published by track-t3-releases.yaml, which
+    # waits for the images before publishing the release. Skipping them here
+    # avoids two workflows racing to push the same manifest.
+    if: ${{ !startsWith(github.event.head_commit.message || '', 'chore(release):') }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}

@@ -941,7 +941,21 @@
               <span>ℹ️</span>
               <div style="flex: 1;">
                 <div style="font-weight: 600;">Versionsprüfung</div>
-                <div style="font-size: 10px; color: var(--text-secondary);">t3, gh &amp; Werkzeuge</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">t3, Add-on, HA-Skill &amp; Werkzeuge</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="updateT3Cli(this)">
+              <span>⬆️</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">T3 CLI aktualisieren</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Neueste Version nach /data</div>
+              </div>
+            </button>
+            <button class="qa-action-btn" onclick="updateHaSkill(this)">
+              <span>🧠</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">HA-Skill aktualisieren</div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Neueste Fassung von GitHub</div>
               </div>
             </button>
             <button class="qa-action-btn" onclick="executeQuickCmd('tmux_sessions', this)">
@@ -2841,7 +2855,9 @@
         const res = await fetch(url);
         const data = await res.json();
         if (outputElem) {
-          if (data.output) {
+          if (cmdKey === 'version_check') {
+            outputElem.innerText = formatVersionInfo(data);
+          } else if (data.output) {
             outputElem.innerText = `$ ${data.command || cmdKey}\n\n${data.output}`;
           } else {
             outputElem.innerText = JSON.stringify(data, null, 2);
@@ -2985,6 +3001,25 @@
       }
     });
 
+    function formatVersionInfo(data) {
+      if (!data || typeof data !== 'object') return String(data);
+      const ok = '✅';
+      const lines = [
+        `T3 CLI (installiert):   ${data.t3_version || data.current || 'unbekannt'}`,
+        `T3 CLI (neueste):       ${data.latest || 'unbekannt'}${data.update_available ? '  ⬆️ Update verfügbar' : ''}`,
+        `T3 im Add-on-Image:     ${data.pinned_version || 'unbekannt'}`,
+        `Add-on-Version:         ${data.addon_version || 'unbekannt'}`,
+        `Home Assistant Skill:   ${data.ha_skill === 'installed' ? ok + ' installiert' : '❌ ' + (data.ha_skill || 'unbekannt')}`,
+        `GitHub CLI:             ${data.gh_version || 'unbekannt'}`
+      ];
+      if (data.update_available && data.release_url) {
+        lines.push('', `Release: ${data.release_url}`);
+      }
+      lines.push('', 'T3 CLI-Update installiert nach /data/tools (bleibt bei Add-on-Updates erhalten).');
+      lines.push('Neue Add-on-Versionen erscheinen automatisch im Home Assistant Add-on Store.');
+      return lines.join('\n');
+    }
+
     async function checkVersion() {
       try {
         const res = await fetch('version_check');
@@ -3020,6 +3055,49 @@
     }
 
     checkVersion();
+
+    window.updateT3Cli = async function(btnElem) {
+      const outputElem = document.getElementById('qa-output-content');
+      const box = document.getElementById('qa-output-box');
+      if (box) { box.style.display = 'block'; box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      if (outputElem) outputElem.innerText = 'T3 CLI wird aktualisiert (Installation nach /data/tools)...\n';
+      if (btnElem) btnElem.disabled = true;
+      try {
+        const res = await fetch('update_cli');
+        const data = await res.json();
+        if (outputElem) {
+          outputElem.innerText = res.ok
+            ? `T3 CLI aktualisiert auf Version ${data.version || 'unbekannt'}.\nDer Server wurde neu gestartet.\n\nHinweis: Für Add-on-Aktualisierungen (neue Images) die Home Assistant Add-on-Verwaltung verwenden.`
+            : `Fehler: ${data.message || 'Aktualisierung fehlgeschlagen'}`;
+        }
+        checkVersion();
+      } catch (err) {
+        if (outputElem) outputElem.innerText = `Fehler: ${err.message}`;
+      } finally {
+        if (btnElem) btnElem.disabled = false;
+      }
+    };
+
+    window.updateHaSkill = async function(btnElem) {
+      const outputElem = document.getElementById('qa-output-content');
+      const box = document.getElementById('qa-output-box');
+      if (box) { box.style.display = 'block'; box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      if (outputElem) outputElem.innerText = 'Home Assistant Skill wird von GitHub aktualisiert...\n';
+      if (btnElem) btnElem.disabled = true;
+      try {
+        const res = await fetch('t3_skill?action=update');
+        const data = await res.json();
+        if (outputElem) {
+          outputElem.innerText = res.ok
+            ? `Home Assistant Skill aktualisiert.\nPfad: ${data.path}\n\n${data.output || ''}\n\nHinweis: In laufenden Chats "Restart agent session" ausführen, damit der Skill neu geladen wird.`
+            : `Fehler: ${data.message || data.output || 'Aktualisierung fehlgeschlagen'}`;
+        }
+      } catch (err) {
+        if (outputElem) outputElem.innerText = `Fehler: ${err.message}`;
+      } finally {
+        if (btnElem) btnElem.disabled = false;
+      }
+    };
 
     async function uploadImage() {
       const fileInput = document.getElementById('file');
