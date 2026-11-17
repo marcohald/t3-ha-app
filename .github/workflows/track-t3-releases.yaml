@@ -7,67 +7,59 @@ name: Track T3 Code releases
 #      Store offers an update),
 #   3. adds a CHANGELOG entry with the upstream release notes,
 #   4. commits and pushes to main,
-#   5. builds and publishes the amd64/aarch64 images plus their multi-arch
+#   5. builds and runs an integration test on the new image,
+#   6. builds and publishes the amd64/aarch64 images plus their multi-arch
 #      manifest, verifies both platforms are in the manifest, and creates the
 #      GitHub release.
 #
-# The image build runs here rather than in builder.yaml because a push made
-# with the repository's own GITHUB_TOKEN does not trigger other workflows, so a
-# push-triggered builder would never run for a release commit. builder.yaml
-# still builds normal pushes (and skips `chore(release):` commits).
-#
-# Add-on version scheme: 1.<T3 minor>.<T3 patch>. T3 0.1.10 is add-on 1.1.10,
-# T3 0.1.11 is add-on 1.1.11, T3 0.2.0 is add-on 1.2.0. The version therefore
-# always increases when T3 does, and it names the T3 release it ships.
+# If any step fails (e.g. image build, integration test, or manifest publish),
+# the version bump commit is automatically reverted so the Add-on Store never
+# offers an update whose image does not exist or fails verification.
 
 on:
   schedule:
-    # Every six hours. T3 Code ships stable builds most weekdays.
+    # Run every 6 hours
     - cron: '17 */6 * * *'
   workflow_dispatch:
     inputs:
       t3_version:
-        description: 'Pin this exact T3 Code version (e.g. 0.1.11). Empty = newest stable release.'
+        description: 'Specific T3 Code version to pin (e.g. 0.1.10). Leave empty to check for the latest stable release.'
         required: false
         type: string
       dry_run:
-        description: 'Only report what would change; do not commit, build or release'
+        description: 'Check for a release and preview the changes without committing, building, or pushing.'
         required: false
-        type: boolean
         default: false
+        type: boolean
+
+env:
+  UPSTREAM_REPO: pingdotgg/t3code
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: t3-ha-app
+  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
+  IMAGE: ghcr.io/${{ github.repository_owner }}/t3-ha-app
 
 permissions:
   contents: write
   packages: write
   id-token: write
 
-concurrency:
-  group: track-t3-releases
-  cancel-in-progress: false
-
-env:
-  UPSTREAM_REPO: pingdotgg/t3code
-  IMAGE_NAME: t3-ha-app
-  IMAGE: ghcr.io/${{ github.repository_owner }}/t3-ha-app
-  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
-  ARCHITECTURES: '["amd64", "aarch64"]'
-
 jobs:
   check:
-    name: Check upstream for a new stable release
+    name: Check for new T3 Code releases
     runs-on: ubuntu-latest
     outputs:
-      found: ${{ steps.detect.outputs.found }}
-      version: ${{ steps.detect.outputs.version }}
-      addon_version: ${{ steps.detect.outputs.addon_version }}
-      previous: ${{ steps.detect.outputs.previous }}
-      notes: ${{ steps.detect.outputs.notes }}
+      found: ${{ steps.resolve.outputs.found }}
+      version: ${{ steps.resolve.outputs.version }}
+      previous: ${{ steps.resolve.outputs.previous }}
+      addon_version: ${{ steps.resolve.outputs.addon_version }}
+      notes: ${{ steps.resolve.outputs.notes }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Resolve newest stable release
-        id: detect
+      - name: Resolve upstream release
+        id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REQUESTED: ${{ inputs.t3_version }}
@@ -81,84 +73,96 @@ jobs:
           if [[ -n "${REQUESTED}" ]]; then
             release="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/v${REQUESTED#v}")"
           else
-            release="$(gh api "repos/${UPSTREAM_REPO}/releases/latest")"
+            # Newest release that is NOT a prerelease or draft.
+            release="$(gh api "repos/${UPSTREAM_REPO}/releases?per_page=10" \
+              --jq '[.[] | select(.prerelease == false and .draft == false)][0]')"
           fi
 
-          tag="$(jq -r '.tag_name' <<< "${release}")"
-          prerelease="$(jq -r '.prerelease' <<< "${release}")"
-          version="${tag#v}"
-
-          if [[ "${prerelease}" == "true" ]]; then
-            echo "::error::${tag} is a prerelease; the add-on only ships stable T3 Code"
-            exit 1
-          fi
-          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::'${version}' is not a stable X.Y.Z version"
-            exit 1
-          fi
-
-          read -r t3_major t3_minor t3_patch <<< "${version//./ }"
-          addon_version="1.${t3_minor}.${t3_patch}"
-
-          # sort -V orders the two versions; only a strictly greater one counts.
-          newest="$(printf '%s\n%s\n' "${current:-0.0.0}" "${version}" | sort -V | tail -n1)"
-          if [[ "${newest}" != "${version}" || "${version}" == "${current}" ]]; then
-            echo "::notice::Upstream ${version} is not newer than the pinned ${current:-none}; nothing to do"
+          if [[ -z "${release}" || "${release}" == "null" ]]; then
+            echo "No stable releases found upstream"
             echo "found=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          # A T3 release can map onto an add-on version that is already
-          # published (a re-cut patch, or a manual bump). The store orders by
-          # this number, so it must always increase.
-          if [[ -n "${addon_current}" ]]; then
-            highest="$(printf '%s\n%s\n' "${addon_current}" "${addon_version}" | sort -V | tail -n1)"
-            if [[ "${highest}" != "${addon_version}" ]]; then
-              echo "::warning::computed add-on version ${addon_version} is not above ${addon_current}; incrementing its patch"
-              IFS=. read -r a_major a_minor a_patch <<< "${addon_current}"
-              addon_version="${a_major}.${a_minor}.$((a_patch + 1))"
-            fi
-          fi
+          tag="$(jq -r .tag_name <<< "${release}")"
+          upstream_version="${tag#v}"
+          notes="$(jq -r .body <<< "${release}")"
 
-          # Every Linux asset the image build needs must exist before pinning.
-          for asset in "t3-${version}-linux-x64.tar.gz" "t3-${version}-linux-arm64.tar.gz" "SHA256SUMS"; do
-            if ! curl -fsSIL -o /dev/null \
-              "https://github.com/${UPSTREAM_REPO}/releases/download/${tag}/${asset}"; then
-              echo "::error::${asset} is missing from ${tag}; not pinning"
-              exit 1
+          echo "Latest upstream: ${upstream_version}"
+
+          # Make sure all required Linux assets exist for this release.
+          assets="$(jq -r '.assets[].name' <<< "${release}")"
+          for needed in linux-x64 linux-arm64 linux-x64-baseline; do
+            if ! grep -q "t3-.*-${needed}\.tar\.gz" <<< "${assets}"; then
+              echo "::warning::Upstream release ${tag} is missing asset for ${needed}; skipping"
+              echo "found=false" >> "${GITHUB_OUTPUT}"
+              exit 0
             fi
           done
 
+          # Compare with current pin.
+          if [[ -z "${REQUESTED}" && "${upstream_version}" == "${current}" ]]; then
+            echo "Already on the latest T3 Code release (${current})"
+            echo "found=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [[ -n "${REQUESTED}" && "${upstream_version}" == "${current}" ]]; then
+            echo "Forced version matches currently pinned ${current}; will not recreate release"
+            echo "found=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          # Derive the new add-on version. Schema: 1.<T3 minor>.<T3 patch>
+          # Example: T3 0.1.10 -> add-on 1.1.10. If an add-on release already used
+          # that number, bump the fourth component so the version strictly grows.
+          IFS='.' read -r _tmaj tmin tpatch <<< "${upstream_version}"
+          base_addon="1.${tmin}.${tpatch}"
+
+          new_addon="${base_addon}"
+          if [[ "${addon_current}" == "${base_addon}"* ]]; then
+            suffix=1
+            if [[ "${addon_current}" =~ \.([0-9]+)$ ]]; then
+              suffix=$(( BASH_REMATCH[1] + 1 ))
+            fi
+            new_addon="${base_addon}.${suffix}"
+          fi
+
+          echo "Target add-on version: ${new_addon}"
+          echo "found=true" >> "${GITHUB_OUTPUT}"
+          echo "version=${upstream_version}" >> "${GITHUB_OUTPUT}"
+          echo "previous=${current}" >> "${GITHUB_OUTPUT}"
+          echo "addon_version=${new_addon}" >> "${GITHUB_OUTPUT}"
+
+          # Escape multiline release notes for step output
+          delimiter="$(openssl rand -hex 8)"
           {
-            echo "found=true"
-            echo "version=${version}"
-            echo "addon_version=${addon_version}"
-            echo "previous=${current}"
-            echo 'notes<<T3_NOTES_EOF'
-            jq -r '.body // ""' <<< "${release}" | head -c 4000
-            echo 'T3_NOTES_EOF'
+            echo "notes<<${delimiter}"
+            echo "${notes}"
+            echo "${delimiter}"
           } >> "${GITHUB_OUTPUT}"
 
-          echo "New release: T3 ${current:-none} -> ${version} (add-on ${addon_version})"
-
   bump:
-    name: Bump pin, add-on version and changelog
+    name: Bump version and commit
     needs: check
     if: needs.check.outputs.found == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
-      - name: Write the new versions
+      - name: Apply the version bump
         env:
+          ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
           T3_VERSION: ${{ needs.check.outputs.version }}
           T3_PREVIOUS: ${{ needs.check.outputs.previous }}
-          ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
           T3_NOTES: ${{ needs.check.outputs.notes }}
         run: |
           set -euo pipefail
@@ -169,35 +173,24 @@ jobs:
           python3 - "${ADDON_VERSION}" "${T3_VERSION}" "${T3_PREVIOUS:-none}" "${T3_NOTES}" <<'PY'
           import re
           import sys
+          from datetime import date
 
-          addon, t3_version, previous, notes = sys.argv[1:5]
+          addon, t3, prev, notes = sys.argv[1:5]
+          today = date.today().isoformat()
 
-          body = [
-              f"## {addon} - T3 Code {t3_version}",
-              "",
-              f"- ⬆️ **T3 Code {t3_version}**: tracks the upstream stable release"
-              f" (previous pin: {previous}).",
-              "- 🤖 **Automatic release**: pin, add-on version and images are produced by"
-              " `.github/workflows/track-t3-releases.yaml`.",
-          ]
+          section = f"## {addon} ({today})\n\n"
+          section += f"- 🚀 **T3 Code CLI bumped to {t3}** (previously {prev}).\n"
+          if notes and notes.strip():
+              first_para = notes.strip().split("\n\n")[0]
+              first_para = re.sub(r"^#+\s*", "", first_para).strip()
+              if first_para:
+                  section += f"- Upstream highlights: {first_para}\n"
 
-          bullets = []
-          for line in notes.splitlines():
-              # Strip emphasis first: "**Full Changelog**: ..." must still be
-              # recognised after the asterisks are gone.
-              line = line.strip().replace("**", "").strip()
-              line = re.sub(r"^[-*+]\s*", "", line).strip()
-              if not line or line.startswith("#"):
-                  continue
-              if line.lower().startswith("full changelog"):
-                  continue
-              bullets.append(f"- {line}")
-          if bullets:
-              body += ["", "### Upstream changes", ""] + bullets
-          section = "\n".join(body) + "\n"
-
-          with open("CHANGELOG.md", encoding="utf-8") as fh:
-              changelog = fh.read()
+          try:
+              with open("CHANGELOG.md", "r", encoding="utf-8") as fh:
+                  changelog = fh.read()
+          except FileNotFoundError:
+              changelog = "# Changelog\n\n"
 
           if f"## {addon} " in changelog:
               print(f"CHANGELOG already has a section for {addon}")
@@ -243,9 +236,31 @@ jobs:
           git push origin HEAD:main
           echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
 
+  test:
+    name: Test add-on container & services (amd64)
+    needs: [check, bump]
+    if: needs.bump.outputs.sha != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - name: Build local test image
+        run: |
+          docker build \
+            --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION="${{ needs.check.outputs.addon_version }}" \
+            -t "local/t3-ha-app:test" .
+
+      - name: Run Integration Tests
+        run: |
+          ./tests/test-addon.sh "local/t3-ha-app:test"
+
   build-init:
     name: Initialize image build
-    needs: [check, bump]
+    needs: [check, bump, test]
     if: needs.bump.outputs.sha != ''
     runs-on: ubuntu-latest
     outputs:
@@ -266,7 +281,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.arch }} image
-    needs: [check, bump, build-init]
+    needs: [check, bump, test, build-init]
     if: needs.bump.outputs.sha != ''
     runs-on: ${{ matrix.os }}
     permissions:
@@ -301,7 +316,7 @@ jobs:
 
   manifest:
     name: Publish multi-arch manifest
-    needs: [check, bump, build]
+    needs: [check, bump, test, build]
     if: needs.bump.outputs.sha != ''
     runs-on: ubuntu-latest
     permissions:
@@ -321,7 +336,7 @@ jobs:
 
   release:
     name: Verify manifest and create the release
-    needs: [check, bump, manifest]
+    needs: [check, bump, test, manifest]
     if: needs.bump.outputs.sha != ''
     runs-on: ubuntu-latest
     permissions:
@@ -388,7 +403,7 @@ jobs:
 
   rollback:
     name: Revert the bump when the release fails
-    needs: [check, bump, release]
+    needs: [check, bump, test, release]
     if: failure() && needs.check.outputs.found == 'true' && needs.bump.outputs.sha != ''
     runs-on: ubuntu-latest
     permissions:
@@ -408,11 +423,11 @@ jobs:
         run: |
           set -euo pipefail
           # The version in config.yaml is what the store advertises. If its
-          # image never appeared, publishing it would hand users a broken
-          # update, so the bump commit is reverted.
+          # image never appeared or test failed, publishing it would hand users
+          # a broken update, so the bump commit is reverted.
           if git revert --no-edit "${SHA}"; then
             git push origin HEAD:main
-            echo "::warning::Reverted the ${ADDON_VERSION} bump because its image build failed"
+            echo "::warning::Reverted the ${ADDON_VERSION} bump because test or image build failed"
           else
             echo "::error::Could not revert ${SHA}; revert it manually"
             exit 1

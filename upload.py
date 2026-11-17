@@ -117,7 +117,7 @@ def restart_t3_serve():
     cmd = [T3_BIN, 'serve']
     if lan_enabled:
         cmd.append('--lan')
-    cmd += ['--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant']
+    cmd += ['--port', str(t3_port), '/homeassistant']
     subprocess.Popen(
         cmd,
         env=dict(os.environ, T3CODE_HOME='/data/.t3'),
@@ -236,7 +236,7 @@ def _run_t3_connect_worker():
             t3_port = int(os.environ.get('T3_PORT', 3774))
             subprocess.run(['fuser', '-k', f'{t3_port}/tcp'], capture_output=True)
             subprocess.Popen(
-                [T3_BIN, 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
+                [T3_BIN, 'serve', '--lan', '--port', str(t3_port), '/homeassistant'],
                 env=env
             )
         else:
@@ -471,7 +471,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 subprocess.run(['fuser', '-k', f'{t3_port}/tcp'], capture_output=True)
                 subprocess.Popen(
-                    [T3_BIN, 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
+                    [T3_BIN, 'serve', '--lan', '--port', str(t3_port), '/homeassistant'],
                     env=dict(os.environ, T3CODE_HOME='/data/.t3')
                 )
                 self.send_response(200)
@@ -621,7 +621,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 subprocess.run(['pkill', '-f', 't3 serve'], capture_output=True)
                 time.sleep(1)
 
-                serve_cmd = [T3_BIN, 'serve', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant']
+                serve_cmd = [T3_BIN, 'serve', '--port', str(t3_port), '/homeassistant']
                 if target_enable:
                     serve_cmd.insert(2, '--lan')
 
@@ -827,6 +827,14 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             except:
                 gh_ver = "unknown"
 
+            try:
+                claude_ver = subprocess.check_output(['claude', '--version'], stderr=subprocess.STDOUT).decode().splitlines()[0].strip()
+            except:
+                try:
+                    claude_ver = subprocess.check_output(['/data/.local/bin/claude', '--version'], stderr=subprocess.STDOUT).decode().splitlines()[0].strip()
+                except:
+                    claude_ver = "not installed"
+
             skill_ver = 'not installed'
             skill_meta = os.path.join(os.environ.get('HOME', '/data'), '.claude', 'skills', 'homeassistant', 'SKILL.md')
             if os.path.exists(skill_meta):
@@ -844,6 +852,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 'pinned_version': _read_text(T3_PIN_FILE),
                 'addon_version': os.environ.get('T3_ADDON_VERSION', ''),
                 'gh_version': gh_ver,
+                'claude_version': claude_ver,
                 'ha_skill': skill_ver
             }).encode())
 
