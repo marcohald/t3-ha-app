@@ -1,11 +1,14 @@
 ARG BUILD_FROM=ubuntu:22.04
 FROM ${BUILD_FROM}
 
-ARG BUILD_ARCH=amd64
+# Passed by the Home Assistant builder as amd64 / aarch64. It must be declared
+# for the gh install step below to see it, otherwise both images get amd64 gh.
+ARG BUILD_ARCH
+ARG BUILD_VERSION=0.0.0
 ARG GH_VERSION=2.62.0
 
 LABEL \
-    io.hass.version="1.0.1" \
+    io.hass.version="${BUILD_VERSION}" \
     io.hass.type="app" \
     io.hass.arch="amd64|aarch64" \
     org.opencontainers.image.title="T3 Code" \
@@ -19,9 +22,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     LANGUAGE=en_US:en \
     T3CODE_HOME=/data/.t3 \
-    PATH="/usr/local/bin:$PATH"
+    T3_ADDON_VERSION="${BUILD_VERSION}" \
+    PATH="/data/tools/bin:/usr/local/bin:$PATH"
 
-# Install lightweight runtime dependencies (minimal footprint)
+# Install lightweight runtime dependencies (minimal footprint).
+# python3-websockets backs the bundled Home Assistant skill.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -33,6 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nano \
     nginx \
     python3 \
+    python3-websockets \
     nodejs \
     tar \
     procps \
@@ -57,8 +63,18 @@ RUN mkdir -p /opt/t3code/html /homeassistant /var/log/nginx && \
 
 WORKDIR /homeassistant
 
-# Install T3 Code CLI during build for target architecture
-RUN curl -fsSL https://t3.codes/install.sh | T3CODE_INSTALL_BIN_DIR=/usr/local/bin T3CODE_HOME=/opt/t3 sh
+# Install the pinned T3 Code CLI. This copy is the offline fallback: at runtime
+# t3-runtime.sh installs the same version under /data so that `t3 update` and
+# `t3 doctor` write to the persistent volume instead of a container layer.
+COPY t3-version.txt /opt/t3code/t3-version.txt
+RUN set -eu; \
+    version="$(cat /opt/t3code/t3-version.txt)"; \
+    curl -fsSL https://t3.codes/install.sh | \
+        T3CODE_VERSION="$version" \
+        T3CODE_INSTALL_BIN_DIR=/usr/local/bin \
+        T3CODE_HOME=/opt/t3 \
+        sh; \
+    /usr/local/bin/t3 --version
 
 # Copy configurations, scripts, and web UI files
 COPY nginx.conf /etc/nginx/nginx.conf
@@ -66,10 +82,16 @@ COPY upload.py /opt/t3code/upload.py
 COPY html/ /opt/t3code/html/
 COPY attach.sh /opt/t3code/attach.sh
 COPY welcome.sh /opt/t3code/welcome.sh
+COPY persist.sh /opt/t3code/persist.sh
+COPY skills.sh /opt/t3code/skills.sh
+COPY t3-runtime.sh /opt/t3code/t3-runtime.sh
+COPY skill/homeassistant/ /opt/t3code/skill/homeassistant/
 COPY tmux.conf /opt/t3code/tmux.conf
 COPY tmux.conf /etc/tmux.conf
 COPY run.sh /run.sh
 
-RUN chmod +x /opt/t3code/attach.sh /opt/t3code/welcome.sh /run.sh
+RUN chmod +x /opt/t3code/attach.sh /opt/t3code/welcome.sh /opt/t3code/persist.sh \
+        /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /run.sh \
+        /opt/t3code/skill/homeassistant/scripts/*.py
 
 CMD [ "/run.sh" ]

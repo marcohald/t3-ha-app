@@ -4,7 +4,7 @@ set -e
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 export LANGUAGE=en_US:en
-export PATH="/usr/local/bin:$PATH"
+export HOME=/data
 export T3CODE_HOME=/data/.t3
 unset GODEBUG
 
@@ -34,6 +34,17 @@ if [ -f /data/overlay/opt/t3code/html/index.html ]; then
     ln -sf /data/overlay/opt/t3code/html/index.html /opt/t3code/html/index.html
 fi
 
+# Ensure persistence and working directories exist
+mkdir -p /data/.t3 /data/workspace /homeassistant /var/log/nginx /tmp/uploads
+
+# ---------------------------------------------------------------------------
+# Persistence: point every package manager at /data and write the agent
+# instruction files that tell T3's agents to install software there.
+# ---------------------------------------------------------------------------
+/opt/t3code/persist.sh
+# shellcheck disable=SC1091
+. /data/tools/env.sh
+
 # Configure Server / Environment Display Name
 echo "Configuring T3 Code server/environment name..."
 AUTH_TOKEN="${SUPERVISOR_TOKEN:-$HASSIO_TOKEN}"
@@ -55,14 +66,38 @@ if [ -n "$SERVER_NAME" ]; then
     export T3CODE_HOST_ID="$SERVER_NAME"
 fi
 
-# Background auto-update check for T3 CLI
-echo "Checking for T3 CLI updates..."
-(
-    curl -fsSL --connect-timeout 4 --max-time 20 https://t3.codes/install.sh | T3CODE_INSTALL_BIN_DIR=/usr/local/bin T3CODE_HOME=/opt/t3 sh 2>&1 | tee /tmp/t3_update.log || true
-) &
+# ---------------------------------------------------------------------------
+# T3 CLI: keep the binary and its runtime on /data so `t3 update` and
+# `t3 doctor` are not undone by the next add-on update.
+# ---------------------------------------------------------------------------
+T3_BIN=$(/opt/t3code/t3-runtime.sh | tail -n1)
+if [ -z "$T3_BIN" ] || [ ! -x "$T3_BIN" ]; then
+    echo "ERROR: no usable t3 binary found." >&2
+    exit 1
+fi
+export T3_BIN
+echo "Using t3 binary: ${T3_BIN} ($("$T3_BIN" --version 2>/dev/null || echo unknown))"
 
-# Ensure persistence and working directories exist
-mkdir -p /data/.t3 /homeassistant /var/log/nginx /tmp/uploads
+# ---------------------------------------------------------------------------
+# Home Assistant credentials for the bundled skill and for MCP.
+# SUPERVISOR_TOKEN rotates on every start, so the token file is rewritten each
+# boot and never baked into an image layer.
+# ---------------------------------------------------------------------------
+if [ -n "$AUTH_TOKEN" ]; then
+    printf '%s\n' "$AUTH_TOKEN" > /data/.t3/ha.token
+    chmod 600 /data/.t3/ha.token 2>/dev/null || true
+    export HA_URL="${HA_URL:-http://supervisor/core}"
+    export HA_TOKEN_FILE="${HA_TOKEN_FILE:-/data/.t3/ha.token}"
+    cat << 'HAENV_EOF' > /data/tools/ha-env.sh
+# Managed by t3-ha-app: Home Assistant credentials for the homeassistant skill.
+export HA_URL="${HA_URL:-http://supervisor/core}"
+export HA_TOKEN_FILE="${HA_TOKEN_FILE:-/data/.t3/ha.token}"
+HAENV_EOF
+    echo "[Skill] Home Assistant API credentials configured (${HA_URL})."
+fi
+
+# Install the bundled Home Assistant skill into every agent skill root on /data.
+/opt/t3code/skills.sh
 
 # Configure readline for UTF-8 input
 cat << 'INPUTRC_EOF' > /data/.inputrc
@@ -83,7 +118,7 @@ if [ -f "/data/.t3/service.env" ]; then
     fi
 fi
 echo "Starting T3 Code server with 't3 serve $LAN_ARG --port $T3_PORT'..."
-/usr/local/bin/t3 serve $LAN_ARG --port "$T3_PORT" --auto-bootstrap-project-from-cwd /homeassistant > /data/t3_serve.log 2>&1 &
+"$T3_BIN" serve $LAN_ARG --port "$T3_PORT" --auto-bootstrap-project-from-cwd /homeassistant > /data/t3_serve.log 2>&1 &
 T3_PID=$!
 echo "T3 Code server process launched with PID $T3_PID on port $T3_PORT (LAN: ${LAN_ARG:-disabled})."
 
@@ -118,7 +153,7 @@ export MCP_CONFIG_PATH=/homeassistant/mcp.json
 sleep 3
 echo "=========================================================="
 echo "T3 Code Server Status & Mobile App Pairing Info:"
-/usr/local/bin/t3 pair || true
+"$T3_BIN" pair || true
 echo "=========================================================="
 
 # Start Python Upload & API server on port 62906

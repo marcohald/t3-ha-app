@@ -6,9 +6,16 @@ export TERM=xterm-256color
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 export LANGUAGE=en_US:en
+export HOME=/data
 export PATH="/usr/local/bin:$PATH"
 export T3CODE_HOME=/data/.t3
 unset GODEBUG
+
+# Persistent toolchain (package managers, HA credentials) on /data.
+if [ -f /data/tools/env.sh ]; then
+    # shellcheck disable=SC1091
+    . /data/tools/env.sh
+fi
 
 # Ensure UI overlay link is active if present
 if [ -f /data/overlay/opt/t3code/html/index.html ] && [ ! -L /opt/t3code/html/index.html ]; then

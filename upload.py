@@ -13,9 +13,118 @@ from urllib.parse import urlparse, parse_qs
 
 UPLOAD_DIR = '/tmp/uploads'
 
+# The t3 launcher lives on the persistent /data volume (see t3-runtime.sh), so
+# `t3 update` and `t3 doctor` are not undone by the next add-on update.
+def resolve_t3_bin():
+    """Pick the t3 launcher, preferring the persistent /data copy."""
+    candidates = [
+        os.environ.get('T3_BIN'),
+        '/data/tools/bin/t3',
+        '/usr/local/bin/t3',
+    ]
+    for path in candidates:
+        if path and os.access(path, os.X_OK):
+            return path
+    return '/usr/local/bin/t3'
+
+
+T3_BIN = resolve_t3_bin()
+
+# Version pin baked into the image by the release-tracking workflow.
+T3_PIN_FILE = '/opt/t3code/t3-version.txt'
+T3_STATE_FILE = '/data/.t3/t3-installed-version'
+T3_RELEASE_API = 'https://api.github.com/repos/pingdotgg/t3code/releases/latest'
+_release_cache = {}
+
 if os.path.exists(UPLOAD_DIR):
     shutil.rmtree(UPLOAD_DIR)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def _read_text(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as fh:
+            return fh.read().strip()
+    except OSError:
+        return ''
+
+
+def installed_t3_version():
+    """Version of the t3 binary in use, e.g. ``0.1.10``."""
+    try:
+        out = subprocess.check_output([T3_BIN, '--version'], stderr=subprocess.STDOUT).decode()
+    except Exception:
+        return _read_text(T3_STATE_FILE) or 'unknown'
+    match = re.search(r'v?(\d+\.\d+\.\d+\S*)', out)
+    return match.group(1) if match else out.strip() or 'unknown'
+
+
+def latest_t3_release():
+    """Newest stable T3 Code release as ``(version, html_url)``.
+
+    Returns ``(None, None)`` when GitHub is unreachable, which the UI treats as
+    "cannot check right now" rather than "up to date". Results are cached for a
+    few minutes: the UI asks on every page load, and GitHub's unauthenticated
+    API is rate limited per IP.
+    """
+    now = time.time()
+    cached = _release_cache.get('value')
+    if cached and now - cached[0] < 300:
+        return cached[1], cached[2]
+    try:
+        req = urllib.request.Request(
+            T3_RELEASE_API,
+            headers={'Accept': 'application/vnd.github+json', 'User-Agent': 't3-ha-app'},
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+        if data.get('prerelease'):
+            return None, None
+        version = str(data.get('tag_name', '')).lstrip('v') or None
+        url = data.get('html_url')
+        _release_cache['value'] = (now, version, url)
+        return version, url
+    except Exception:
+        return None, None
+
+
+def version_tuple(value):
+    try:
+        return tuple(int(part) for part in re.findall(r'\d+', value)[:3])
+    except Exception:
+        return (0, 0, 0)
+
+
+def restart_t3_serve():
+    """Restart `t3 serve` on the LAN port, preserving the --lan setting.
+
+    Used after replacing the binary so the running server uses the new one.
+    The image's run.sh is not involved: this only swaps the process.
+    """
+    t3_port = os.environ.get('T3_PORT', '3774')
+    lan_enabled = True
+    env_file = '/data/.t3/service.env'
+    try:
+        with open(env_file, 'r', encoding='utf-8') as fh:
+            if 'T3CODE_LAN=false' in fh.read():
+                lan_enabled = False
+    except OSError:
+        pass
+
+    subprocess.run(['pkill', '-f', 't3 serve'], capture_output=True)
+    time.sleep(1)
+
+    cmd = [T3_BIN, 'serve']
+    if lan_enabled:
+        cmd.append('--lan')
+    cmd += ['--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant']
+    subprocess.Popen(
+        cmd,
+        env=dict(os.environ, T3CODE_HOME='/data/.t3'),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
 
 def ascii_qr_to_svg(qr_text, scale=6, quiet_zone=2):
     lines = [l for l in qr_text.splitlines() if any(c in l for c in ['█', '▀', '▄'])]
@@ -98,7 +207,7 @@ def _run_t3_connect_worker():
         subprocess.run(["tmux", "send-keys", "-t", "t3_lite_1", "t3 connect", "C-m"], capture_output=True)
 
         _t3_connect_proc = subprocess.Popen(
-            ['/usr/local/bin/t3', 'connect', 'link', '--headless'],
+            [T3_BIN, 'connect', 'link', '--headless'],
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -127,7 +236,7 @@ def _run_t3_connect_worker():
             t3_port = int(os.environ.get('T3_PORT', 3774))
             subprocess.run(['fuser', '-k', f'{t3_port}/tcp'], capture_output=True)
             subprocess.Popen(
-                ['/usr/local/bin/t3', 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
+                [T3_BIN, 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
                 env=env
             )
         else:
@@ -154,7 +263,7 @@ def _run_account_login_worker():
         subprocess.run(["tmux", "send-keys", "-t", "t3_lite_1", "t3 connect login --headless", "C-m"], capture_output=True)
 
         _account_proc = subprocess.Popen(
-            ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
+            [T3_BIN, 'connect', 'login', '--headless'],
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -290,7 +399,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 env = dict(os.environ, T3CODE_HOME='/data/.t3')
                 res = subprocess.run(
-                    ['/usr/local/bin/t3', 'pair'],
+                    [T3_BIN, 'pair'],
                     env=env,
                     capture_output=True,
                     text=True,
@@ -362,7 +471,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 subprocess.run(['fuser', '-k', f'{t3_port}/tcp'], capture_output=True)
                 subprocess.Popen(
-                    ['/usr/local/bin/t3', 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
+                    [T3_BIN, 'serve', '--lan', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant'],
                     env=dict(os.environ, T3CODE_HOME='/data/.t3')
                 )
                 self.send_response(200)
@@ -380,7 +489,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 env = dict(os.environ, T3CODE_HOME='/data/.t3')
                 res = subprocess.run(
-                    ['/usr/local/bin/t3', 'connect', 'status'],
+                    [T3_BIN, 'connect', 'status'],
                     env=env,
                     capture_output=True,
                     text=True,
@@ -419,7 +528,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 env = dict(os.environ, T3CODE_HOME='/data/.t3')
                 if action == 'status':
-                    res = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
+                    res = subprocess.run([T3_BIN, 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
                     pub_m = re.search(r'Publish agent activity:\s*(\S+)', res.stdout)
                     is_enabled = (pub_m.group(1).lower() == 'enabled') if pub_m else False
                     self.send_response(200)
@@ -433,20 +542,20 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                     return
 
                 if action == 'toggle':
-                    chk = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
+                    chk = subprocess.run([T3_BIN, 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
                     if 'Publish agent activity: enabled' in chk.stdout:
                         action = 'disable'
                     else:
                         action = 'enable'
 
-                cmd = ['/usr/local/bin/t3', 'connect', 'publish']
+                cmd = [T3_BIN, 'connect', 'publish']
                 if action == 'disable':
                     cmd.append('--disable')
 
                 res = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=10)
                 msg = (res.stdout + res.stderr).strip()
 
-                st_res = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
+                st_res = subprocess.run([T3_BIN, 'connect', 'status'], env=env, capture_output=True, text=True, timeout=10)
                 pub_m = re.search(r'Publish agent activity:\s*(\S+)', st_res.stdout)
                 is_enabled = (pub_m.group(1).lower() == 'enabled') if pub_m else ('enabled' in msg.lower())
 
@@ -472,7 +581,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
 
                 def get_current_lan():
                     try:
-                        st = subprocess.run(['/usr/local/bin/t3', 'status', '--json'], env=env, capture_output=True, text=True, timeout=5)
+                        st = subprocess.run([T3_BIN, 'status', '--json'], env=env, capture_output=True, text=True, timeout=5)
                         data = json.loads(st.stdout)
                         return data.get('lan', {}).get('enabled', False)
                     except Exception:
@@ -506,13 +615,13 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                     target_enable = True
 
                 flag = '--lan' if target_enable else '--no-lan'
-                subprocess.run(['/usr/local/bin/t3', 'up', flag], env=env, capture_output=True, text=True, timeout=10)
+                subprocess.run([T3_BIN, 'up', flag], env=env, capture_output=True, text=True, timeout=10)
 
                 t3_port = os.environ.get('T3_PORT', '3774')
-                subprocess.run(['pkill', '-f', '/usr/local/bin/t3 serve'], capture_output=True)
+                subprocess.run(['pkill', '-f', 't3 serve'], capture_output=True)
                 time.sleep(1)
 
-                serve_cmd = ['/usr/local/bin/t3', 'serve', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant']
+                serve_cmd = [T3_BIN, 'serve', '--port', str(t3_port), '--auto-bootstrap-project-from-cwd', '/homeassistant']
                 if target_enable:
                     serve_cmd.insert(2, '--lan')
 
@@ -544,7 +653,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 if action == 'status':
                     try:
                         res = subprocess.run(
-                            ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
+                            [T3_BIN, 'connect', 'login', '--headless'],
                             env=env,
                             capture_output=True,
                             text=True,
@@ -575,7 +684,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                     global _account_proc, _account_info
                     try:
                         res = subprocess.run(
-                            ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
+                            [T3_BIN, 'connect', 'login', '--headless'],
                             env=env,
                             capture_output=True,
                             text=True,
@@ -615,7 +724,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
 
                 elif action == 'logout':
                     res = subprocess.run(
-                        ['/usr/local/bin/t3', 'connect', 'logout'],
+                        [T3_BIN, 'connect', 'logout'],
                         env=env,
                         capture_output=True,
                         text=True,
@@ -639,15 +748,15 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             query = parse_qs(parsed_path.query)
             cmd_key = query.get('cmd', [''])[0]
             allowed_cmds = {
-                'doctor': ['/usr/local/bin/t3', 'doctor'],
-                'doctor_fix': ['/usr/local/bin/t3', 'doctor', '--fix'],
-                'status': ['/usr/local/bin/t3', 'status'],
-                'connect_status': ['/usr/local/bin/t3', 'connect', 'status'],
-                'version': ['/usr/local/bin/t3', '--version'],
+                'doctor': [T3_BIN, 'doctor'],
+                'doctor_fix': [T3_BIN, 'doctor', '--fix'],
+                'status': [T3_BIN, 'status'],
+                'connect_status': [T3_BIN, 'connect', 'status'],
+                'version': [T3_BIN, '--version'],
                 'tmux_sessions': ['tmux', 'list-sessions'],
-                'login_headless': ['/usr/local/bin/t3', 'connect', 'login', '--headless'],
-                'logout': ['/usr/local/bin/t3', 'connect', 'logout'],
-                'connect_link_headless': ['/usr/local/bin/t3', 'connect', 'link', '--headless'],
+                'login_headless': [T3_BIN, 'connect', 'login', '--headless'],
+                'logout': [T3_BIN, 'connect', 'logout'],
+                'connect_link_headless': [T3_BIN, 'connect', 'link', '--headless'],
             }
             if cmd_key in allowed_cmds:
                 try:
@@ -671,17 +780,13 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(b'{"status": "error", "message": "Command not allowed"}')
-                self.send_response(500)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
 
         elif parsed_path.path == '/t3_connect_link':
             global _t3_connect_proc, _t3_connect_info
             # First check if already connected
             try:
                 env = dict(os.environ, T3CODE_HOME='/data/.t3')
-                chk = subprocess.run(['/usr/local/bin/t3', 'connect', 'status'], env=env, capture_output=True, text=True, timeout=5)
+                chk = subprocess.run([T3_BIN, 'connect', 'status'], env=env, capture_output=True, text=True, timeout=5)
                 if "Tunnel connected" in chk.stdout or "Other devices can reach this machine" in chk.stdout:
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
@@ -711,35 +816,96 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(_t3_connect_info).encode())
 
         elif parsed_path.path == '/version_check':
-            try:
-                t3_ver = subprocess.check_output(['/usr/local/bin/t3', '--version'], stderr=subprocess.STDOUT).decode().strip()
-            except:
-                t3_ver = "unknown"
+            current = installed_t3_version()
+            latest, release_url = latest_t3_release()
+            update_available = bool(
+                latest and version_tuple(latest) > version_tuple(current)
+            )
 
             try:
                 gh_ver = subprocess.check_output(['/usr/local/bin/gh', '--version'], stderr=subprocess.STDOUT).decode().splitlines()[0].strip()
             except:
                 gh_ver = "unknown"
 
+            skill_ver = 'not installed'
+            skill_meta = os.path.join(os.environ.get('HOME', '/data'), '.claude', 'skills', 'homeassistant', 'SKILL.md')
+            if os.path.exists(skill_meta):
+                skill_ver = 'installed'
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({
-                't3_version': t3_ver,
-                'gh_version': gh_ver
+                't3_version': current,
+                'current': current,
+                'latest': latest,
+                'update_available': update_available,
+                'release_url': release_url,
+                'pinned_version': _read_text(T3_PIN_FILE),
+                'addon_version': os.environ.get('T3_ADDON_VERSION', ''),
+                'gh_version': gh_ver,
+                'ha_skill': skill_ver
             }).encode())
 
         elif parsed_path.path == '/update_cli':
+            # Update the t3 on the persistent volume, then restart the server so
+            # the new binary is actually used. The add-on image itself is
+            # updated through the Home Assistant Add-on Store.
             try:
-                subprocess.run(['bash', '-c', 'curl -fsSL https://t3.codes/install.sh | T3CODE_INSTALL_BIN_DIR=/usr/local/bin T3CODE_HOME=/opt/t3 sh'], check=True)
+                res = subprocess.run(
+                    ['bash', '-c', 'curl -fsSL https://t3.codes/install.sh | '
+                                   f'T3CODE_HOME=/data/.t3 T3CODE_INSTALL_BIN_DIR=/data/tools/bin sh'],
+                    capture_output=True, text=True, timeout=600
+                )
+                if res.returncode != 0:
+                    raise RuntimeError((res.stderr or res.stdout).strip()[-500:] or 'install failed')
+                restart_t3_serve()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(b'{"status": "success"}')
+                self.wfile.write(json.dumps({
+                    'status': 'success',
+                    'version': installed_t3_version()
+                }).encode())
             except Exception as e:
                 self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+
+        elif parsed_path.path == '/t3_skill':
+            query = parse_qs(parsed_path.query)
+            action = query.get('action', ['status'])[0]
+            skill_dir = os.path.join(os.environ.get('HOME', '/data'), '.claude', 'skills', 'homeassistant')
+            if action == 'update':
+                try:
+                    # --github refreshes from the upstream repository; without
+                    # it the copy bundled in the image is reinstalled.
+                    res = subprocess.run(['/opt/t3code/skills.sh', '--github'],
+                                         capture_output=True, text=True, timeout=180)
+                    ok = os.path.exists(os.path.join(skill_dir, 'SKILL.md'))
+                    self.send_response(200 if ok else 500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'status': 'success' if ok else 'error',
+                        'path': skill_dir,
+                        'output': (res.stdout + res.stderr).strip()
+                    }).encode())
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode())
+            else:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'status': 'success',
+                    'installed': os.path.exists(os.path.join(skill_dir, 'SKILL.md')),
+                    'path': skill_dir
+                }).encode())
 
         elif parsed_path.path == '/export_backup':
             backup_file = "/tmp/t3code_backup.tar.gz"
