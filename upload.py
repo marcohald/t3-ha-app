@@ -30,6 +30,23 @@ def resolve_t3_bin():
 
 T3_BIN = resolve_t3_bin()
 
+# Google Antigravity CLI (agy) lives on the persistent /data volume too (see
+# antigravity-runtime.sh); the image copy is only an offline fallback.
+def resolve_agy_bin():
+    """Pick the agy launcher, preferring the persistent /data copy."""
+    candidates = [
+        os.environ.get('AGY_BIN'),
+        '/data/tools/bin/agy',
+        '/usr/local/bin/agy',
+    ]
+    for path in candidates:
+        if path and os.access(path, os.X_OK):
+            return path
+    return '/usr/local/bin/agy'
+
+
+AGY_BIN = resolve_agy_bin()
+
 # Version pin baked into the image by the release-tracking workflow.
 T3_PIN_FILE = '/opt/t3code/t3-version.txt'
 T3_STATE_FILE = '/data/.t3/t3-installed-version'
@@ -55,6 +72,16 @@ def installed_t3_version():
         out = subprocess.check_output([T3_BIN, '--version'], stderr=subprocess.STDOUT).decode()
     except Exception:
         return _read_text(T3_STATE_FILE) or 'unknown'
+    match = re.search(r'v?(\d+\.\d+\.\d+\S*)', out)
+    return match.group(1) if match else out.strip() or 'unknown'
+
+
+def installed_antigravity_version():
+    """Version of the agy binary in use, e.g. ``1.5.13``."""
+    try:
+        out = subprocess.check_output([AGY_BIN, '--version'], stderr=subprocess.STDOUT).decode()
+    except Exception:
+        return 'not installed'
     match = re.search(r'v?(\d+\.\d+\.\d+\S*)', out)
     return match.group(1) if match else out.strip() or 'unknown'
 
@@ -853,6 +880,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 'addon_version': os.environ.get('T3_ADDON_VERSION', ''),
                 'gh_version': gh_ver,
                 'claude_version': claude_ver,
+                'antigravity_version': installed_antigravity_version(),
                 'ha_skill': skill_ver
             }).encode())
 

@@ -102,6 +102,18 @@ fi
 # Ensure Claude Code CLI is set up in /data/.local/bin
 /opt/t3code/claude-runtime.sh || true
 
+# ---------------------------------------------------------------------------
+# Antigravity CLI (agy): keep the pinned binary on /data so it survives the
+# next add-on update, exactly like t3 and claude.
+# ---------------------------------------------------------------------------
+AGY_BIN=$(/opt/t3code/antigravity-runtime.sh | tail -n1 || true)
+export AGY_BIN
+if [ -n "$AGY_BIN" ] && [ -x "$AGY_BIN" ]; then
+    echo "Using Antigravity CLI: ${AGY_BIN} ($(${AGY_BIN} --version 2>/dev/null || echo unknown))"
+else
+    echo "Antigravity CLI not available in this build."
+fi
+
 # Configure readline for UTF-8 input
 cat << 'INPUTRC_EOF' > /data/.inputrc
 set input-meta on

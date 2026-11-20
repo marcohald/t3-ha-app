@@ -24,6 +24,10 @@
 - 🐙 **Integrated GitHub CLI (`gh`)**:
   - Pre-installed official GitHub CLI binary.
   - Clone repositories, push commits, and manage pull requests right from your Home Assistant terminal (`gh auth login`).
+- 🛰️ **Integrated Google Antigravity CLI (`agy`)**:
+  - Pre-installed native `agy` binary, pinned in `antigravity-version.txt` (newest stable: `1.5.13`).
+  - Mapped to `/data/tools/bin/agy` on startup so it survives add-on updates, just like `t3` and `claude`.
+  - New stable upstream releases are picked up automatically by CI (see below) — no local rebuild needed.
 - 🪶 **Optimized Multi-Arch Container Architecture**:
   - Multi-architecture container images (`amd64` and `aarch64` / ARM64) built automatically via GitHub Actions CI.
   - Lightweight base image with minimal memory and disk footprint.
@@ -32,8 +36,12 @@
   - It pins the version in `t3-version.txt`, bumps the add-on version in `config.yaml`, adds a CHANGELOG entry, commits and pushes, then builds and publishes the amd64/aarch64 images and their multi-arch manifest itself, verifies both platforms are in the GHCR manifest, and creates the GitHub release.
   - If the image build fails, the version bump is reverted automatically, so the Add-on Store never advertises a version whose image is missing.
   - Version scheme: `1.<T3 minor>.<T3 patch>` — T3 Code `0.1.11` ships as add-on `1.1.11`.
+- 🛰️ **Automatic Antigravity CLI Release Tracking**:
+  - A scheduled workflow (`.github/workflows/track-antigravity-releases.yaml`) checks `google-antigravity/antigravity-cli` every six hours for a new **stable** CLI release.
+  - It pins the version in `antigravity-version.txt`, bumps the add-on version in `config.yaml`, adds a CHANGELOG entry, then builds, tests and publishes the `amd64`/`aarch64` images and their multi-arch manifest through CI — updates reach the Add-on Store without any local build.
+  - Failed builds/tests revert the bump automatically. Supports `workflow_dispatch` with a specific version or `dry_run`.
 - 💾 **Update-Secure Software Installation (`/data`)**:
-  - The container filesystem is rebuilt on every add-on update; only `/data` survives. `persist.sh` points `PATH`, `npm`, `pip`, `cargo`, `go`, `bun` and `deno` at `/data/tools`, so `npm install -g`, `pip install --user`, `cargo install`, … persist across updates.
+  - The container filesystem is rebuilt on every add-on update; only `/data` survives. `persist.sh` points `PATH`, `npm`, `pip`, `cargo`, `go`, `bun` and `deno` at `/data/tools`, so `npm install -g`, `pip install --user`, `cargo install`, … persist across updates. `python3-pip` (`pip3`) is preinstalled in the image.
   - The `t3` binary itself lives on `/data` (`/data/tools/bin/t3`, runtime in `/data/.t3`) and never downgrades, so `t3 update` and `t3 doctor` survive add-on updates. The image copy stays as an offline fallback.
   - Managed instruction blocks in `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` and `~/.config/opencode/AGENTS.md` tell every T3 chat to install software into `/data`.
 - 🧠 **Bundled Home Assistant Skill**:

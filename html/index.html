@@ -3012,6 +3012,7 @@
         `Home Assistant Skill:   ${data.ha_skill === 'installed' ? ok + ' installiert' : '❌ ' + (data.ha_skill || 'unbekannt')}`,
         `GitHub CLI:             ${data.gh_version || 'unbekannt'}`,
         `Claude Code CLI:        ${data.claude_version || "unbekannt"}`,
+        `Antigravity CLI:        ${data.antigravity_version || "unbekannt"}`,
       ];
       if (data.update_available && data.release_url) {
         lines.push('', `Release: ${data.release_url}`);

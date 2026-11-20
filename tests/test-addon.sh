@@ -57,6 +57,18 @@ docker exec "${CONTAINER_NAME}" claude --version
 docker exec "${CONTAINER_NAME}" bash -l -c "claude --version"
 echo "✓ Claude Code CLI verified."
 
+# 4b. Verify Google Antigravity CLI (agy) is present and pinned
+echo "=== [CI Test] Checking Antigravity CLI ==="
+docker exec "${CONTAINER_NAME}" agy --version
+docker exec "${CONTAINER_NAME}" bash -l -c "agy --version"
+EXPECTED_AGY=$(docker exec "${CONTAINER_NAME}" cat /opt/t3code/antigravity-version.txt | tr -d '[:space:]')
+ACTUAL_AGY=$(docker exec "${CONTAINER_NAME}" agy --version | tr -d '[:space:]')
+if [ "${ACTUAL_AGY}" != "${EXPECTED_AGY}" ]; then
+    echo "::error::agy version mismatch: expected ${EXPECTED_AGY}, got ${ACTUAL_AGY}"
+    exit 1
+fi
+echo "✓ Antigravity CLI verified (${ACTUAL_AGY})."
+
 # 5. Verify GitHub CLI (gh) is present
 echo "=== [CI Test] Checking GitHub CLI ==="
 docker exec "${CONTAINER_NAME}" gh --version
@@ -76,6 +88,7 @@ res = urllib.request.urlopen("http://127.0.0.1:62906/version_check")
 data = json.loads(res.read().decode())
 print("API Response:", json.dumps(data, indent=2))
 assert data.get("claude_version") not in (None, "not installed", "unknown"), "Claude CLI missing in API"
+assert data.get("antigravity_version") not in (None, "not installed", "unknown"), "Antigravity CLI missing in API"
 assert data.get("ha_skill") == "installed", "HA skill missing in API"
 '
 echo "✓ API version check verified."

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.12 (2026-11-21)
+
+- 🛰️ **Google Antigravity CLI bundled**: native `agy` binary (pinned to `1.5.13` via `antigravity-version.txt`) preinstalled for `amd64`/`aarch64` and mapped persistently to `/data/tools/bin` by `antigravity-runtime.sh`, so it survives add-on updates.
+- 🤖 **Automatic Antigravity release tracking**: new `.github/workflows/track-antigravity-releases.yaml` checks `google-antigravity/antigravity-cli` every six hours, bumps the pin and add-on version, and rebuilds/publishes the images through CI — no local build required.
+- 📊 **Status & tests**: `/version_check` and the Ingress status view now report the Antigravity CLI version, and the CI integration test verifies the installed `agy` matches the pin.
+- 🐍 **pip3 in the image**: added `python3-pip` so `pip3 install --user` works out of the box (and lands in `/data/tools/python` via `persist.sh`).
+
 ## 1.1.11 (2026-11-17)
 
 - 🧪 **Pre-publish CI integration test**: added container test suite verifying all services (`t3 serve`, `nginx`, `upload.py`), CLI tools and endpoints before building and publishing images.

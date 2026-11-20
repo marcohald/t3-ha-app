@@ -1,0 +1,435 @@
+name: Track Antigravity CLI releases
+
+# Watches google-antigravity/antigravity-cli for stable Antigravity CLI (agy)
+# releases. When a newer one appears this workflow:
+#   1. writes the new pin to antigravity-version.txt,
+#   2. bumps the add-on version in config.yaml (so the Home Assistant Add-on
+#      Store offers an update),
+#   3. adds a CHANGELOG entry with the upstream release notes,
+#   4. commits and pushes to main,
+#   5. builds and runs an integration test on the new image,
+#   6. builds and publishes the amd64/aarch64 images plus their multi-arch
+#      manifest, verifies both platforms are in the manifest, and creates the
+#      GitHub release.
+#
+# Builds happen here in CI only — never locally. The bump commit uses the
+# `chore(release):` prefix so builder.yaml does not race this workflow to push
+# the same manifest. If any step fails (image build, integration test, or
+# manifest publish), the version bump commit is reverted so the Add-on Store
+# never offers an update whose image does not exist or fails verification.
+
+on:
+  schedule:
+    # Run every 6 hours, staggered from the T3 tracker
+    - cron: '47 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      agy_version:
+        description: 'Specific Antigravity CLI version to pin (e.g. 1.5.13). Leave empty to check for the latest stable release.'
+        required: false
+        type: string
+      dry_run:
+        description: 'Check for a release and preview the changes without committing, building, or pushing.'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  UPSTREAM_REPO: google-antigravity/antigravity-cli
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: t3-ha-app
+  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
+  IMAGE: ghcr.io/${{ github.repository_owner }}/t3-ha-app
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  check:
+    name: Check for new Antigravity CLI releases
+    runs-on: ubuntu-latest
+    outputs:
+      found: ${{ steps.resolve.outputs.found }}
+      version: ${{ steps.resolve.outputs.version }}
+      previous: ${{ steps.resolve.outputs.previous }}
+      addon_version: ${{ steps.resolve.outputs.addon_version }}
+      notes: ${{ steps.resolve.outputs.notes }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve upstream release
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUESTED: ${{ inputs.agy_version }}
+        run: |
+          set -euo pipefail
+
+          current="$(tr -d '[:space:]' < antigravity-version.txt)"
+          addon_current="$(sed -n 's/^version: *["'"'"']\?\([^"'"'"']*\)["'"'"']\?/\1/p' config.yaml | head -n1)"
+          echo "Pinned agy: ${current:-none} / add-on: ${addon_current:-none}"
+
+          if [[ -n "${REQUESTED}" ]]; then
+            release="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${REQUESTED#v}")"
+          else
+            # Newest release that is NOT a prerelease or draft.
+            release="$(gh api "repos/${UPSTREAM_REPO}/releases?per_page=10" \
+              --jq '[.[] | select(.prerelease == false and .draft == false)][0]')"
+          fi
+
+          if [[ -z "${release}" || "${release}" == "null" ]]; then
+            echo "No stable Antigravity CLI releases found upstream"
+            echo "found=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          tag="$(jq -r .tag_name <<< "${release}")"
+          upstream_version="${tag#v}"
+          notes="$(jq -r .body <<< "${release}")"
+
+          echo "Latest upstream: ${upstream_version}"
+
+          # Make sure all required Linux assets exist for this release. The
+          # image uses the glibc builds (Ubuntu base), matching the Dockerfile.
+          assets="$(jq -r '.assets[].name' <<< "${release}")"
+          for needed in agy_cli_linux_x64.tar.gz agy_cli_linux_arm64.tar.gz; do
+            if ! grep -qxF "${needed}" <<< "${assets}"; then
+              echo "::warning::Upstream release ${tag} is missing asset ${needed}; skipping"
+              echo "found=false" >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
+          done
+
+          # Compare with current pin.
+          if [[ "${upstream_version}" == "${current}" ]]; then
+            if [[ -n "${REQUESTED}" ]]; then
+              echo "Forced version matches currently pinned ${current}; will not recreate release"
+            else
+              echo "Already on the latest Antigravity CLI release (${current})"
+            fi
+            echo "found=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          # Derive the new add-on version by incrementing the last numeric
+          # component of the current version (e.g. 1.1.12 -> 1.1.13). This
+          # always grows and coexists with the T3 release tracker.
+          new_addon="$(python3 - "${addon_current:-1.0.0}" <<'PY'
+          import sys
+          parts = sys.argv[1].split(".")
+          for i in range(len(parts) - 1, -1, -1):
+              if parts[i].isdigit():
+                  parts[i] = str(int(parts[i]) + 1)
+                  break
+          else:
+              parts.append("1")
+          print(".".join(parts))
+          PY
+          )"
+
+          echo "Target add-on version: ${new_addon}"
+          echo "found=true" >> "${GITHUB_OUTPUT}"
+          echo "version=${upstream_version}" >> "${GITHUB_OUTPUT}"
+          echo "previous=${current}" >> "${GITHUB_OUTPUT}"
+          echo "addon_version=${new_addon}" >> "${GITHUB_OUTPUT}"
+
+          # Escape multiline release notes for step output
+          delimiter="$(openssl rand -hex 8)"
+          {
+            echo "notes<<${delimiter}"
+            echo "${notes}"
+            echo "${delimiter}"
+          } >> "${GITHUB_OUTPUT}"
+
+  bump:
+    name: Bump version and commit
+    needs: check
+    if: needs.check.outputs.found == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply the version bump
+        env:
+          ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
+          AGY_VERSION: ${{ needs.check.outputs.version }}
+          AGY_PREVIOUS: ${{ needs.check.outputs.previous }}
+          AGY_NOTES: ${{ needs.check.outputs.notes }}
+        run: |
+          set -euo pipefail
+
+          printf '%s\n' "${AGY_VERSION}" > antigravity-version.txt
+          sed -i -E "s/^version: *[\"']?[^\"']*[\"']?/version: \"${ADDON_VERSION}\"/" config.yaml
+
+          python3 - "${ADDON_VERSION}" "${AGY_VERSION}" "${AGY_PREVIOUS:-none}" "${AGY_NOTES}" <<'PY'
+          import re
+          import sys
+          from datetime import date
+
+          addon, agy, prev, notes = sys.argv[1:5]
+          today = date.today().isoformat()
+
+          section = f"## {addon} ({today})\n\n"
+          section += f"- 🛰️ **Antigravity CLI bumped to {agy}** (previously {prev}).\n"
+          if notes and notes.strip():
+              first_para = notes.strip().split("\n\n")[0]
+              first_para = re.sub(r"^#+\s*", "", first_para).strip()
+              if first_para:
+                  section += f"- Upstream highlights: {first_para}\n"
+
+          try:
+              with open("CHANGELOG.md", "r", encoding="utf-8") as fh:
+                  changelog = fh.read()
+          except FileNotFoundError:
+              changelog = "# Changelog\n\n"
+
+          if f"## {addon} " in changelog:
+              print(f"CHANGELOG already has a section for {addon}")
+              sys.exit(0)
+
+          marker = "# Changelog\n\n"
+          if changelog.startswith(marker):
+              changelog = marker + section + "\n" + changelog[len(marker):]
+          else:
+              changelog = "# Changelog\n\n" + section + "\n" + changelog
+
+          with open("CHANGELOG.md", "w", encoding="utf-8") as fh:
+              fh.write(changelog)
+          PY
+
+          git --no-pager diff
+
+      - name: Report only
+        if: inputs.dry_run
+        env:
+          ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
+          AGY_VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          echo "Dry run: would release add-on ${ADDON_VERSION} for Antigravity CLI ${AGY_VERSION}"
+          git checkout -- .
+
+      - name: Commit and push
+        id: commit
+        if: ${{ !inputs.dry_run }}
+        env:
+          ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
+          AGY_VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add config.yaml CHANGELOG.md antigravity-version.txt
+          if git diff --cached --quiet; then
+            echo "Nothing to commit; the pin is already released"
+            exit 0
+          fi
+          # `chore(release):` makes builder.yaml skip this commit so this
+          # workflow is the sole builder/publisher of the new image.
+          git commit -m "chore(release): Antigravity CLI ${AGY_VERSION} (add-on ${ADDON_VERSION})"
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+  test:
+    name: Test add-on container & services (amd64)
+    needs: [check, bump]
+    if: needs.bump.outputs.sha != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - name: Build local test image
+        run: |
+          docker build \
+            --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION="${{ needs.check.outputs.addon_version }}" \
+            -t "local/t3-ha-app:test" .
+
+      - name: Run Integration Tests
+        run: |
+          ./tests/test-addon.sh "local/t3-ha-app:test"
+
+  build-init:
+    name: Initialize image build
+    needs: [check, bump, test]
+    if: needs.bump.outputs.sha != ''
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - name: Get build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+
+  build:
+    name: Build ${{ matrix.arch }} image
+    needs: [check, bump, test, build-init]
+    if: needs.bump.outputs.sha != ''
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.build-init.outputs.matrix) }}
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.sha }}
+
+      - name: Build image
+        uses: home-assistant/builder/actions/build-image@2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.check.outputs.addon_version }}
+            latest
+          labels: |
+            io.hass.type=app
+            io.hass.name=T3 Code
+            io.hass.description=AI-assisted coding terminal, T3 Code server with mobile companion app pairing, and T3 Connect remote access
+            io.hass.url=https://github.com/marcohald/t3-ha-app
+          push: "true"
+          version: ${{ needs.check.outputs.addon_version }}
+
+  manifest:
+    name: Publish multi-arch manifest
+    needs: [check, bump, test, build]
+    if: needs.bump.outputs.sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ needs.check.outputs.addon_version }}
+            latest
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+
+  release:
+    name: Verify manifest and create the release
+    needs: [check, bump, test, manifest]
+    if: needs.bump.outputs.sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - name: Verify the published multi-arch manifest
+        env:
+          VERSION: ${{ needs.check.outputs.addon_version }}
+          REGISTRY: ghcr.io
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          # The Supervisor pulls the multi-arch manifest, so both platforms
+          # must be in it before the store advertises the update.
+          printf '%s' "${TOKEN}" | docker login "${REGISTRY}" -u "${ACTOR}" --password-stdin >/dev/null
+          for attempt in $(seq 1 40); do
+            if manifest="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>/dev/null)"; then
+              printf '%s\n' "${manifest}"
+              for arch in amd64 arm64; do
+                grep -q "linux/${arch}" <<< "${manifest}" \
+                  || { echo "::error::${IMAGE}:${VERSION} has no linux/${arch} entry"; exit 1; }
+              done
+              echo "Verified ${IMAGE}:${VERSION} (amd64, arm64)"
+              exit 0
+            fi
+            echo "Waiting for ${IMAGE}:${VERSION} (attempt ${attempt}/40)"
+            sleep 15
+          done
+          echo "::error::${IMAGE}:${VERSION} was not published"
+          exit 1
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.check.outputs.addon_version }}
+          AGY_VERSION: ${{ needs.check.outputs.version }}
+          AGY_NOTES: ${{ needs.check.outputs.notes }}
+        run: |
+          set -euo pipefail
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists"
+            exit 0
+          fi
+          {
+            echo "Home Assistant add-on release shipping Antigravity CLI **${AGY_VERSION}**."
+            echo
+            echo "Update via **Settings → Add-ons → T3 Code → Update** (the store checks"
+            echo "this repository every few hours)."
+            echo
+            echo "Image: \`${IMAGE}:${VERSION}\` (amd64, aarch64)"
+            echo
+            if [[ -n "${AGY_NOTES}" ]]; then
+              echo "## Upstream changes"
+              echo
+              printf '%s\n' "${AGY_NOTES}"
+            fi
+          } > /tmp/release-notes.md
+          gh release create "v${VERSION}" \
+            --title "Antigravity CLI ${AGY_VERSION} (add-on ${VERSION})" \
+            --notes-file /tmp/release-notes.md \
+            --latest
+
+  rollback:
+    name: Revert the bump when the release fails
+    needs: [check, bump, test, release]
+    if: failure() && needs.check.outputs.found == 'true' && needs.bump.outputs.sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Revert and push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ needs.bump.outputs.sha }}
+          ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
+        run: |
+          set -euo pipefail
+          if git revert --no-edit "${SHA}"; then
+            git push origin HEAD:main
+            echo "::warning::Reverted the ${ADDON_VERSION} bump because test or image build failed"
+          else
+            echo "::error::Could not revert ${SHA}; revert it manually"
+            exit 1
+          fi
