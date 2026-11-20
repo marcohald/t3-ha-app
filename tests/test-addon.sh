@@ -62,7 +62,7 @@ echo "=== [CI Test] Checking OpenCode CLI ==="
 docker exec "${CONTAINER_NAME}" opencode --version
 docker exec "${CONTAINER_NAME}" bash -l -c "opencode --version"
 EXPECTED_OC=$(docker exec "${CONTAINER_NAME}" cat /opt/t3code/opencode-version.txt | tr -d '[:space:]')
-ACTUAL_OC=$(docker exec "${CONTAINER_NAME}" opencode --version | sed -n 's/^v\{0,1\}\([0-9][^ ]*\).*/\1/p' | tr -d '[:space:]')
+ACTUAL_OC=$(docker exec "${CONTAINER_NAME}" opencode --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 | tr -d '[:space:]')
 if [ "${ACTUAL_OC}" != "${EXPECTED_OC}" ]; then
     echo "::error::opencode version mismatch: expected ${EXPECTED_OC}, got ${ACTUAL_OC}"
     exit 1

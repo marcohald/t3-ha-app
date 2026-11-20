@@ -23,7 +23,7 @@ pinned_version() {
 
 binary_version() {
     [ -x "$1" ] || return 0
-    "$1" --version 2>/dev/null | sed -n 's/^v\{0,1\}\([0-9][^ ]*\).*/\1/p' | head -n1
+    "$1" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1
 }
 
 # version_gt A B -> true when A is newer than B
