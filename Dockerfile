@@ -69,26 +69,25 @@ RUN case "${BUILD_ARCH}" in \
     ln -sf /usr/local/bin/claude /usr/bin/claude && \
     /usr/local/bin/claude --version
 
-# Install Google Antigravity CLI (agy) standalone binary for target architecture.
-# The version is pinned in antigravity-version.txt; the release-tracking workflow
+# Install OpenCode CLI standalone binary for target architecture.
+# The version is pinned in opencode-version.txt; the release-tracking workflow
 # updates that pin and rebuilds the image through CI whenever upstream ships a
 # newer stable CLI, so no local rebuild is ever needed.
-COPY antigravity-version.txt /opt/t3code/antigravity-version.txt
+COPY opencode-version.txt /opt/t3code/opencode-version.txt
 RUN set -eu; \
     case "${BUILD_ARCH}" in \
-        amd64)   AGY_ARCH="x64" ;; \
-        aarch64) AGY_ARCH="arm64" ;; \
-        *)       AGY_ARCH="x64" ;; \
+        amd64)   OC_ARCH="x64" ;; \
+        aarch64) OC_ARCH="arm64" ;; \
+        *)       OC_ARCH="x64" ;; \
     esac; \
-    agy_version="$(cat /opt/t3code/antigravity-version.txt)"; \
-    curl -fsSL -o /tmp/agy.tar.gz \
-        "https://github.com/google-antigravity/antigravity-cli/releases/download/${agy_version}/agy_cli_linux_${AGY_ARCH}.tar.gz"; \
-    tar -xz -C /usr/local/bin -f /tmp/agy.tar.gz antigravity; \
-    mv /usr/local/bin/antigravity /usr/local/bin/agy; \
-    chmod +x /usr/local/bin/agy; \
-    ln -sf /usr/local/bin/agy /usr/bin/agy; \
-    rm -f /tmp/agy.tar.gz; \
-    /usr/local/bin/agy --version
+    oc_version="$(cat /opt/t3code/opencode-version.txt)"; \
+    curl -fsSL -o /tmp/opencode.tar.gz \
+        "https://github.com/anomalyco/opencode/releases/download/v${oc_version}/opencode-linux-${OC_ARCH}.tar.gz"; \
+    tar -xz -C /usr/local/bin -f /tmp/opencode.tar.gz opencode; \
+    chmod +x /usr/local/bin/opencode; \
+    ln -sf /usr/local/bin/opencode /usr/bin/opencode; \
+    rm -f /tmp/opencode.tar.gz; \
+    /usr/local/bin/opencode --version
 
 # Setup application directories and workspace symlinks
 RUN mkdir -p /opt/t3code/html /homeassistant /var/log/nginx && \
@@ -119,7 +118,7 @@ COPY welcome.sh /opt/t3code/welcome.sh
 COPY persist.sh /opt/t3code/persist.sh
 COPY skills.sh /opt/t3code/skills.sh
 COPY t3-runtime.sh /opt/t3code/t3-runtime.sh
-COPY antigravity-runtime.sh /opt/t3code/antigravity-runtime.sh
+COPY opencode-runtime.sh /opt/t3code/opencode-runtime.sh
 COPY claude-runtime.sh /opt/t3code/claude-runtime.sh
 COPY skill/homeassistant/ /opt/t3code/skill/homeassistant/
 COPY tmux.conf /opt/t3code/tmux.conf
@@ -127,7 +126,7 @@ COPY tmux.conf /etc/tmux.conf
 COPY run.sh /run.sh
 
 RUN chmod +x /opt/t3code/attach.sh /opt/t3code/welcome.sh /opt/t3code/persist.sh \
-        /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /opt/t3code/antigravity-runtime.sh \
+        /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /opt/t3code/opencode-runtime.sh \
         /opt/t3code/claude-runtime.sh /run.sh \
         /opt/t3code/skill/homeassistant/scripts/*.py
 

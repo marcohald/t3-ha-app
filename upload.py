@@ -30,27 +30,28 @@ def resolve_t3_bin():
 
 T3_BIN = resolve_t3_bin()
 
-# Google Antigravity CLI (agy) lives on the persistent /data volume too (see
-# antigravity-runtime.sh); the image copy is only an offline fallback.
-def resolve_agy_bin():
-    """Pick the agy launcher, preferring the persistent /data copy."""
+# OpenCode CLI lives on the persistent /data volume too (see
+# opencode-runtime.sh); the image copy is only an offline fallback.
+def resolve_opencode_bin():
+    """Pick the opencode launcher, preferring the persistent /data copy."""
     candidates = [
-        os.environ.get('AGY_BIN'),
-        '/data/tools/bin/agy',
-        '/usr/local/bin/agy',
+        os.environ.get('OPENCODE_BIN'),
+        '/data/tools/bin/opencode',
+        '/usr/local/bin/opencode',
     ]
     for path in candidates:
         if path and os.access(path, os.X_OK):
             return path
-    return '/usr/local/bin/agy'
+    return '/usr/local/bin/opencode'
 
 
-AGY_BIN = resolve_agy_bin()
+OPENCODE_BIN = resolve_opencode_bin()
 
 # Version pin baked into the image by the release-tracking workflow.
 T3_PIN_FILE = '/opt/t3code/t3-version.txt'
 T3_STATE_FILE = '/data/.t3/t3-installed-version'
 T3_RELEASE_API = 'https://api.github.com/repos/pingdotgg/t3code/releases/latest'
+OPENCODE_RELEASE_API = 'https://api.github.com/repos/anomalyco/opencode/releases?per_page=30'
 _release_cache = {}
 
 if os.path.exists(UPLOAD_DIR):
@@ -76,10 +77,10 @@ def installed_t3_version():
     return match.group(1) if match else out.strip() or 'unknown'
 
 
-def installed_antigravity_version():
-    """Version of the agy binary in use, e.g. ``1.5.13``."""
+def installed_opencode_version():
+    """Version of the opencode binary in use, e.g. ``2.3.2``."""
     try:
-        out = subprocess.check_output([AGY_BIN, '--version'], stderr=subprocess.STDOUT).decode()
+        out = subprocess.check_output([OPENCODE_BIN, '--version'], stderr=subprocess.STDOUT).decode()
     except Exception:
         return 'not installed'
     match = re.search(r'v?(\d+\.\d+\.\d+\S*)', out)
@@ -111,6 +112,38 @@ def latest_t3_release():
         url = data.get('html_url')
         _release_cache['value'] = (now, version, url)
         return version, url
+    except Exception:
+        return None, None
+
+
+def latest_opencode_release():
+    """Newest stable OpenCode v2 release as ``(version, html_url)``.
+
+    GitHub marks the legacy v1 line as "latest", so scan the recent stable
+    releases and pick the newest v2 CLI one. Returns ``(None, None)`` when the
+    API is unreachable. Cached for a few minutes alongside the T3 check.
+    """
+    now = time.time()
+    cached = _release_cache.get('opencode')
+    if cached and now - cached[0] < 300:
+        return cached[1], cached[2]
+    try:
+        req = urllib.request.Request(
+            OPENCODE_RELEASE_API,
+            headers={'Accept': 'application/vnd.github+json', 'User-Agent': 't3-ha-app'},
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            releases = json.loads(resp.read().decode())
+        for release in releases:
+            if release.get('prerelease') or release.get('draft'):
+                continue
+            tag = str(release.get('tag_name', ''))
+            if re.fullmatch(r'v2\.\d+\.\d+', tag):
+                version = tag.lstrip('v')
+                url = release.get('html_url')
+                _release_cache['opencode'] = (now, version, url)
+                return version, url
+        return None, None
     except Exception:
         return None, None
 
@@ -849,6 +882,13 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 latest and version_tuple(latest) > version_tuple(current)
             )
 
+            oc_current = installed_opencode_version()
+            oc_latest, oc_release_url = latest_opencode_release()
+            oc_update_available = bool(
+                oc_latest and oc_current not in ('not installed', 'unknown')
+                and version_tuple(oc_latest) > version_tuple(oc_current)
+            )
+
             try:
                 gh_ver = subprocess.check_output(['/usr/local/bin/gh', '--version'], stderr=subprocess.STDOUT).decode().splitlines()[0].strip()
             except:
@@ -880,7 +920,10 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 'addon_version': os.environ.get('T3_ADDON_VERSION', ''),
                 'gh_version': gh_ver,
                 'claude_version': claude_ver,
-                'antigravity_version': installed_antigravity_version(),
+                'opencode_version': oc_current,
+                'opencode_latest': oc_latest,
+                'opencode_update_available': oc_update_available,
+                'opencode_release_url': oc_release_url,
                 'ha_skill': skill_ver
             }).encode())
 

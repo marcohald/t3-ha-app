@@ -3012,8 +3012,11 @@
         `Home Assistant Skill:   ${data.ha_skill === 'installed' ? ok + ' installiert' : '❌ ' + (data.ha_skill || 'unbekannt')}`,
         `GitHub CLI:             ${data.gh_version || 'unbekannt'}`,
         `Claude Code CLI:        ${data.claude_version || "unbekannt"}`,
-        `Antigravity CLI:        ${data.antigravity_version || "unbekannt"}`,
+        `OpenCode CLI:           ${data.opencode_version || 'unbekannt'}${data.opencode_update_available ? `  ⬆️ ${data.opencode_latest} verfügbar` : ''}`,
       ];
+      if (data.opencode_update_available && data.opencode_release_url) {
+        lines.push(`OpenCode Release:       ${data.opencode_release_url}`);
+      }
       if (data.update_available && data.release_url) {
         lines.push('', `Release: ${data.release_url}`);
       }

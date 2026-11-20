@@ -1,8 +1,8 @@
-name: Track Antigravity CLI releases
+name: Track OpenCode releases
 
-# Watches google-antigravity/antigravity-cli for stable Antigravity CLI (agy)
-# releases. When a newer one appears this workflow:
-#   1. writes the new pin to antigravity-version.txt,
+# Watches anomalyco/opencode for new stable OpenCode CLI (v2) releases. When a
+# newer one appears this workflow:
+#   1. writes the new pin to opencode-version.txt,
 #   2. bumps the add-on version in config.yaml (so the Home Assistant Add-on
 #      Store offers an update),
 #   3. adds a CHANGELOG entry with the upstream release notes,
@@ -24,8 +24,8 @@ on:
     - cron: '47 */6 * * *'
   workflow_dispatch:
     inputs:
-      agy_version:
-        description: 'Specific Antigravity CLI version to pin (e.g. 1.5.13). Leave empty to check for the latest stable release.'
+      opencode_version:
+        description: 'Specific OpenCode version to pin (e.g. 2.3.2). Leave empty to check for the latest stable release.'
         required: false
         type: string
       dry_run:
@@ -35,7 +35,7 @@ on:
         type: boolean
 
 env:
-  UPSTREAM_REPO: google-antigravity/antigravity-cli
+  UPSTREAM_REPO: anomalyco/opencode
   ARCHITECTURES: '["amd64", "aarch64"]'
   IMAGE_NAME: t3-ha-app
   REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
@@ -48,7 +48,7 @@ permissions:
 
 jobs:
   check:
-    name: Check for new Antigravity CLI releases
+    name: Check for new OpenCode releases
     runs-on: ubuntu-latest
     outputs:
       found: ${{ steps.resolve.outputs.found }}
@@ -64,24 +64,27 @@ jobs:
         id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REQUESTED: ${{ inputs.agy_version }}
+          REQUESTED: ${{ inputs.opencode_version }}
         run: |
           set -euo pipefail
 
-          current="$(tr -d '[:space:]' < antigravity-version.txt)"
+          current="$(tr -d '[:space:]' < opencode-version.txt)"
           addon_current="$(sed -n 's/^version: *["'"'"']\?\([^"'"'"']*\)["'"'"']\?/\1/p' config.yaml | head -n1)"
-          echo "Pinned agy: ${current:-none} / add-on: ${addon_current:-none}"
+          echo "Pinned OpenCode: ${current:-none} / add-on: ${addon_current:-none}"
 
           if [[ -n "${REQUESTED}" ]]; then
-            release="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${REQUESTED#v}")"
+            release="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/v${REQUESTED#v}")"
           else
-            # Newest release that is NOT a prerelease or draft.
-            release="$(gh api "repos/${UPSTREAM_REPO}/releases?per_page=10" \
-              --jq '[.[] | select(.prerelease == false and .draft == false)][0]')"
+            # Newest stable v2 CLI release. GitHub marks the legacy v1 line as
+            # "latest", so filter by the current v2 tag prefix and skip the
+            # process-daemon and desktop-only releases.
+            release="$(gh api "repos/${UPSTREAM_REPO}/releases?per_page=30" \
+              --jq '[.[] | select(.prerelease == false and .draft == false)
+                          | select(.tag_name | test("^v2\\.[0-9]+\\.[0-9]+$"))][0]')"
           fi
 
           if [[ -z "${release}" || "${release}" == "null" ]]; then
-            echo "No stable Antigravity CLI releases found upstream"
+            echo "No stable OpenCode v2 releases found upstream"
             echo "found=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -95,7 +98,7 @@ jobs:
           # Make sure all required Linux assets exist for this release. The
           # image uses the glibc builds (Ubuntu base), matching the Dockerfile.
           assets="$(jq -r '.assets[].name' <<< "${release}")"
-          for needed in agy_cli_linux_x64.tar.gz agy_cli_linux_arm64.tar.gz; do
+          for needed in opencode-linux-x64.tar.gz opencode-linux-arm64.tar.gz; do
             if ! grep -qxF "${needed}" <<< "${assets}"; then
               echo "::warning::Upstream release ${tag} is missing asset ${needed}; skipping"
               echo "found=false" >> "${GITHUB_OUTPUT}"
@@ -108,14 +111,14 @@ jobs:
             if [[ -n "${REQUESTED}" ]]; then
               echo "Forced version matches currently pinned ${current}; will not recreate release"
             else
-              echo "Already on the latest Antigravity CLI release (${current})"
+              echo "Already on the latest OpenCode release (${current})"
             fi
             echo "found=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
           # Derive the new add-on version by incrementing the last numeric
-          # component of the current version (e.g. 1.1.12 -> 1.1.13). This
+          # component of the current version (e.g. 1.1.13 -> 1.1.14). This
           # always grows and coexists with the T3 release tracker.
           new_addon="$(python3 - "${addon_current:-1.0.0}" <<'PY'
           import sys
@@ -163,25 +166,25 @@ jobs:
       - name: Apply the version bump
         env:
           ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
-          AGY_VERSION: ${{ needs.check.outputs.version }}
-          AGY_PREVIOUS: ${{ needs.check.outputs.previous }}
-          AGY_NOTES: ${{ needs.check.outputs.notes }}
+          OC_VERSION: ${{ needs.check.outputs.version }}
+          OC_PREVIOUS: ${{ needs.check.outputs.previous }}
+          OC_NOTES: ${{ needs.check.outputs.notes }}
         run: |
           set -euo pipefail
 
-          printf '%s\n' "${AGY_VERSION}" > antigravity-version.txt
+          printf '%s\n' "${OC_VERSION}" > opencode-version.txt
           sed -i -E "s/^version: *[\"']?[^\"']*[\"']?/version: \"${ADDON_VERSION}\"/" config.yaml
 
-          python3 - "${ADDON_VERSION}" "${AGY_VERSION}" "${AGY_PREVIOUS:-none}" "${AGY_NOTES}" <<'PY'
+          python3 - "${ADDON_VERSION}" "${OC_VERSION}" "${OC_PREVIOUS:-none}" "${OC_NOTES}" <<'PY'
           import re
           import sys
           from datetime import date
 
-          addon, agy, prev, notes = sys.argv[1:5]
+          addon, oc, prev, notes = sys.argv[1:5]
           today = date.today().isoformat()
 
           section = f"## {addon} ({today})\n\n"
-          section += f"- 🛰️ **Antigravity CLI bumped to {agy}** (previously {prev}).\n"
+          section += f"- ⚡ **OpenCode CLI bumped to {oc}** (previously {prev}).\n"
           if notes and notes.strip():
               first_para = notes.strip().split("\n\n")[0]
               first_para = re.sub(r"^#+\s*", "", first_para).strip()
@@ -214,9 +217,9 @@ jobs:
         if: inputs.dry_run
         env:
           ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
-          AGY_VERSION: ${{ needs.check.outputs.version }}
+          OC_VERSION: ${{ needs.check.outputs.version }}
         run: |
-          echo "Dry run: would release add-on ${ADDON_VERSION} for Antigravity CLI ${AGY_VERSION}"
+          echo "Dry run: would release add-on ${ADDON_VERSION} for OpenCode ${OC_VERSION}"
           git checkout -- .
 
       - name: Commit and push
@@ -224,19 +227,19 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           ADDON_VERSION: ${{ needs.check.outputs.addon_version }}
-          AGY_VERSION: ${{ needs.check.outputs.version }}
+          OC_VERSION: ${{ needs.check.outputs.version }}
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add config.yaml CHANGELOG.md antigravity-version.txt
+          git add config.yaml CHANGELOG.md opencode-version.txt
           if git diff --cached --quiet; then
             echo "Nothing to commit; the pin is already released"
             exit 0
           fi
           # `chore(release):` makes builder.yaml skip this commit so this
           # workflow is the sole builder/publisher of the new image.
-          git commit -m "chore(release): Antigravity CLI ${AGY_VERSION} (add-on ${ADDON_VERSION})"
+          git commit -m "chore(release): OpenCode ${OC_VERSION} (add-on ${ADDON_VERSION})"
           git push origin HEAD:main
           echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
 
@@ -355,8 +358,6 @@ jobs:
           ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
-          # The Supervisor pulls the multi-arch manifest, so both platforms
-          # must be in it before the store advertises the update.
           printf '%s' "${TOKEN}" | docker login "${REGISTRY}" -u "${ACTOR}" --password-stdin >/dev/null
           for attempt in $(seq 1 40); do
             if manifest="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>/dev/null)"; then
@@ -378,8 +379,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.check.outputs.addon_version }}
-          AGY_VERSION: ${{ needs.check.outputs.version }}
-          AGY_NOTES: ${{ needs.check.outputs.notes }}
+          OC_VERSION: ${{ needs.check.outputs.version }}
+          OC_NOTES: ${{ needs.check.outputs.notes }}
         run: |
           set -euo pipefail
           if gh release view "v${VERSION}" >/dev/null 2>&1; then
@@ -387,21 +388,21 @@ jobs:
             exit 0
           fi
           {
-            echo "Home Assistant add-on release shipping Antigravity CLI **${AGY_VERSION}**."
+            echo "Home Assistant add-on release shipping OpenCode **${OC_VERSION}**."
             echo
             echo "Update via **Settings → Add-ons → T3 Code → Update** (the store checks"
             echo "this repository every few hours)."
             echo
             echo "Image: \`${IMAGE}:${VERSION}\` (amd64, aarch64)"
             echo
-            if [[ -n "${AGY_NOTES}" ]]; then
+            if [[ -n "${OC_NOTES}" ]]; then
               echo "## Upstream changes"
               echo
-              printf '%s\n' "${AGY_NOTES}"
+              printf '%s\n' "${OC_NOTES}"
             fi
           } > /tmp/release-notes.md
           gh release create "v${VERSION}" \
-            --title "Antigravity CLI ${AGY_VERSION} (add-on ${VERSION})" \
+            --title "OpenCode ${OC_VERSION} (add-on ${VERSION})" \
             --notes-file /tmp/release-notes.md \
             --latest
 
