@@ -52,7 +52,7 @@ jobs:
           echo "Latest upstream nightly: ${nightly}"
 
           version="0.1.$(date -u +%Y%m%d)"
-          echo "nightly=${nightly}" >> "${GITHUB_OUTPUT}"
+          echo "nightly=${nightly#v}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
           sed -i -E "s/^version: *[\"']?[^\"']*[\"']?/version: \"${version}\"/" \
@@ -92,6 +92,7 @@ jobs:
           docker build -f "${DOCKERFILE}" \
             --build-arg BUILD_ARCH=amd64 \
             --build-arg BUILD_VERSION="${{ needs.init.outputs.version }}" \
+            --build-arg T3_VERSION="${{ needs.init.outputs.nightly }}" \
             -t "local/t3-ha-app-nightly:test" .
 
       - name: Run Integration Tests
@@ -124,6 +125,7 @@ jobs:
         uses: home-assistant/builder/actions/build-image@2026.09.0
         with:
           arch: ${{ matrix.arch }}
+          build-args: T3_VERSION=${{ needs.init.outputs.nightly }}
           context: .
           file: ${{ env.DOCKERFILE }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}

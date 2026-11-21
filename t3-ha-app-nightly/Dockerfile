@@ -11,6 +11,10 @@ FROM ${BUILD_FROM}
 ARG BUILD_ARCH
 ARG BUILD_VERSION=0.0.0
 ARG GH_VERSION=2.62.0
+# Exact nightly version (tag without the leading v), resolved by CI. Passing
+# it avoids an unauthenticated GitHub API lookup during the image build, which
+# is otherwise subject to rate limiting (HTTP 403).
+ARG T3_VERSION=
 
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
@@ -102,14 +106,15 @@ WORKDIR /homeassistant
 # keeps this image's binary in charge of this add-on, while T3CODE_HOME still
 # points at the shared /data/.t3 state directory.
 RUN set -eu; \
+    [ -n "${T3_VERSION}" ] || { echo "T3_VERSION build arg is required" >&2; exit 1; }; \
+    printf '%s\n' "${T3_VERSION}" > /opt/t3code/t3-version.txt; \
     curl -fsSL https://t3.codes/install.sh | \
         T3CODE_CHANNEL=nightly \
+        T3CODE_VERSION="${T3_VERSION}" \
         T3CODE_INSTALL_BIN_DIR=/usr/local/bin \
         T3CODE_HOME=/opt/t3 \
         sh; \
-    /usr/local/bin/t3 --version; \
-    /usr/local/bin/t3 --version | \
-        sed -n 's/^t3 v\{0,1\}\([0-9][^ ]*\).*/\1/p' > /opt/t3code/t3-version.txt
+    /usr/local/bin/t3 --version | grep -qi nightly || { echo "not a nightly build" >&2; exit 1; }
 
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY upload.py /opt/t3code/upload.py
