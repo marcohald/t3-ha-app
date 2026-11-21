@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.14 (2026-11-21)
+
+- 🔁 **T3 Connect relay survives add-on updates**: when the relay was connected before an update, a marker on `/data` now triggers automatic restoration at startup — stale relay-client PID state is cleared, `t3 connect` re-installs/relinks the managed relay client, and `t3 serve` is restarted so the environment link is provisioned and the tunnel comes back without manual intervention. Logout clears the marker. Existing installs with a stored credential are detected via the fallback in `t3-relay.sh`.
+
 ## 1.1.13 (2026-11-21)
 
 - ⚡ **OpenCode CLI bundled**: native `opencode` binary (pinned to `2.3.2` via `opencode-version.txt`) preinstalled for `amd64`/`aarch64` and mapped persistently to `/data/tools/bin` by `opencode-runtime.sh`, so it survives add-on updates. Replaces the previously bundled Antigravity CLI.

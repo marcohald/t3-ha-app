@@ -137,6 +137,14 @@ echo "Starting T3 Code server with 't3 serve $LAN_ARG --port $T3_PORT'..."
 T3_PID=$!
 echo "T3 Code server process launched with PID $T3_PID on port $T3_PORT (LAN: ${LAN_ARG:-disabled})."
 
+# ---------------------------------------------------------------------------
+# T3 Connect relay: an add-on update kills the tunnel even though the stored
+# authorization and managed relay client survive on /data. If the relay was
+# connected before the update, re-run `t3 connect` and restart the server so
+# the environment link is provisioned again (see t3-relay.sh).
+# ---------------------------------------------------------------------------
+T3_PORT="$T3_PORT" /opt/t3code/t3-relay.sh restore || true
+
 # Configure MCP Servers for Home Assistant
 echo "Configuring MCP Servers..."
 HA_TOKEN=$(jq -r '.ha_token // empty' /data/options.json 2>/dev/null || true)

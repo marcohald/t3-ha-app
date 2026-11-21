@@ -30,6 +30,27 @@ def resolve_t3_bin():
 
 T3_BIN = resolve_t3_bin()
 
+# The T3 Connect relay runs inside the container, so it dies on every add-on
+# update. Remember on /data whether it was connected so run.sh can restore it.
+T3_RELAY_MARKER = '/data/.t3/t3-relay-was-connected'
+
+
+def remember_relay_connected():
+    try:
+        os.makedirs(os.path.dirname(T3_RELAY_MARKER), exist_ok=True)
+        with open(T3_RELAY_MARKER, 'w', encoding='utf-8') as fh:
+            fh.write('1\n')
+    except OSError:
+        pass
+
+
+def forget_relay_connected():
+    try:
+        os.remove(T3_RELAY_MARKER)
+    except OSError:
+        pass
+
+
 # OpenCode CLI lives on the persistent /data volume too (see
 # opencode-runtime.sh); the image copy is only an offline fallback.
 def resolve_opencode_bin():
@@ -292,6 +313,7 @@ def _run_t3_connect_worker():
         _t3_connect_proc.wait()
         if _t3_connect_proc.returncode == 0:
             _t3_connect_info['status'] = 'completed'
+            remember_relay_connected()
             # Restart t3 serve to pick up newly provisioned credentials and establish tunnel
             t3_port = int(os.environ.get('T3_PORT', 3774))
             subprocess.run(['fuser', '-k', f'{t3_port}/tcp'], capture_output=True)
@@ -562,6 +584,8 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 relay_match = re.search(r'Relay:\s*(\S+)', output)
                 publish_match = re.search(r'Publish agent activity:\s*(\S+)', output)
                 tunnel_connected = "Tunnel connected" in output or "Other devices can reach this machine" in output
+                if tunnel_connected:
+                    remember_relay_connected()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -790,6 +814,7 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                         text=True,
                         timeout=10
                     )
+                    forget_relay_connected()
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
@@ -822,6 +847,8 @@ class T3UploadHandler(http.server.SimpleHTTPRequestHandler):
                 try:
                     env = dict(os.environ, T3CODE_HOME='/data/.t3')
                     res = subprocess.run(allowed_cmds[cmd_key], env=env, capture_output=True, text=True, timeout=20)
+                    if cmd_key == 'logout' and res.returncode == 0:
+                        forget_relay_connected()
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()

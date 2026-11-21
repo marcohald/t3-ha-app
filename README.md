@@ -102,6 +102,8 @@ To connect to your T3 Code instance securely from outside your home network:
 3. Complete the quick one-time browser authentication.
 4. Monitor tunnel status at any time by clicking **🌐 T3 Connect** in the toolbar or executing `t3 connect status`.
 
+> **Automatic relay restore:** the relay process itself dies on every add-on update (only `/data` survives). If T3 Connect was connected before the update, the add-on remembers this on `/data`, clears the stale relay-client PID state, re-runs `t3 connect` to reinstall/relink the managed relay client and restarts `t3 serve` so the environment link is provisioned and the tunnel reconnects automatically. Logging out clears the remembered state. Existing installs with a stored credential are detected automatically as previously connected.
+
 ---
 
 ## ⚙️ Configuration Reference

@@ -118,6 +118,7 @@ COPY welcome.sh /opt/t3code/welcome.sh
 COPY persist.sh /opt/t3code/persist.sh
 COPY skills.sh /opt/t3code/skills.sh
 COPY t3-runtime.sh /opt/t3code/t3-runtime.sh
+COPY t3-relay.sh /opt/t3code/t3-relay.sh
 COPY opencode-runtime.sh /opt/t3code/opencode-runtime.sh
 COPY claude-runtime.sh /opt/t3code/claude-runtime.sh
 COPY skill/homeassistant/ /opt/t3code/skill/homeassistant/
@@ -126,8 +127,8 @@ COPY tmux.conf /etc/tmux.conf
 COPY run.sh /run.sh
 
 RUN chmod +x /opt/t3code/attach.sh /opt/t3code/welcome.sh /opt/t3code/persist.sh \
-        /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /opt/t3code/opencode-runtime.sh \
-        /opt/t3code/claude-runtime.sh /run.sh \
+        /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /opt/t3code/t3-relay.sh \
+        /opt/t3code/opencode-runtime.sh /opt/t3code/claude-runtime.sh /run.sh \
         /opt/t3code/skill/homeassistant/scripts/*.py
 
 CMD [ "/run.sh" ]

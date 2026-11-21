@@ -69,6 +69,17 @@ if [ "${ACTUAL_OC}" != "${EXPECTED_OC}" ]; then
 fi
 echo "✓ OpenCode CLI verified (${ACTUAL_OC})."
 
+# 4c. Verify T3 Connect relay persistence across add-on updates
+echo "=== [CI Test] Checking T3 Connect relay restore helper ==="
+docker exec "${CONTAINER_NAME}" test -x /opt/t3code/t3-relay.sh
+docker exec "${CONTAINER_NAME}" /opt/t3code/t3-relay.sh forget
+docker exec "${CONTAINER_NAME}" test ! -e /data/.t3/t3-relay-was-connected
+docker exec "${CONTAINER_NAME}" /opt/t3code/t3-relay.sh remember
+docker exec "${CONTAINER_NAME}" test -f /data/.t3/t3-relay-was-connected
+docker exec "${CONTAINER_NAME}" /opt/t3code/t3-relay.sh was-connected
+docker exec "${CONTAINER_NAME}" /opt/t3code/t3-relay.sh forget
+echo "✓ T3 Connect relay marker verified."
+
 # 5. Verify GitHub CLI (gh) is present
 echo "=== [CI Test] Checking GitHub CLI ==="
 docker exec "${CONTAINER_NAME}" gh --version
