@@ -1,0 +1,190 @@
+name: Build Nightly Add-on Images
+
+# Builds the second add-on (T3 Code Nightly) from the same repository root
+# context, so both add-ons always ship identical application files. The only
+# differences live in t3-ha-app-nightly/: config.yaml (slug, ports, shared
+# /share mapping) and Dockerfile (installs the newest T3 nightly build).
+#
+# The nightly add-on has no private data of its own: both add-ons redirect
+# their /data entries to /share/t3-ha-app-data (see shared-data.sh).
+
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: t3-ha-app-nightly
+  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
+  IMAGE: ghcr.io/${{ github.repository_owner }}/t3-ha-app-nightly
+  DOCKERFILE: t3-ha-app-nightly/Dockerfile
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  init:
+    name: Initialize nightly build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      nightly: ${{ steps.version.outputs.nightly }}
+      sha: ${{ steps.version.outputs.sha }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve nightly version and bump add-on version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          nightly="$(gh api 'repos/pingdotgg/t3code/releases?per_page=40' \
+            --jq '[.[] | select(.tag_name | contains("-nightly."))][0].tag_name')"
+          [ -n "${nightly}" ] || { echo "::error::No T3 nightly release found"; exit 1; }
+          echo "Latest upstream nightly: ${nightly}"
+
+          version="0.1.$(date -u +%Y%m%d)"
+          echo "nightly=${nightly}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+          sed -i -E "s/^version: *[\"']?[^\"']*[\"']?/version: \"${version}\"/" \
+            t3-ha-app-nightly/config.yaml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add t3-ha-app-nightly/config.yaml
+          if git diff --cached --quiet; then
+            echo "Nightly add-on version is already ${version}"
+          else
+            # chore(release): makes builder.yaml skip the redundant stable build.
+            git commit -m "chore(release): nightly T3 ${nightly} (add-on ${version})"
+            git push origin HEAD:main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - name: Get build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+
+  test:
+    name: Test nightly add-on (amd64)
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the nightly commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.init.outputs.sha }}
+
+      - name: Build local test image
+        run: |
+          docker build -f "${DOCKERFILE}" \
+            --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION="${{ needs.init.outputs.version }}" \
+            -t "local/t3-ha-app-nightly:test" .
+
+      - name: Run Integration Tests
+        env:
+          EXPECT_CHANNEL: nightly
+          API_PORT: "62907"
+          T3_PORT: "3775"
+          CONTAINER_NAME: t3-ha-app-nightly-ci-test
+        run: |
+          ./tests/test-addon.sh "local/t3-ha-app-nightly:test"
+
+  build:
+    name: Build nightly ${{ matrix.arch }} image
+    needs: [init, test]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - name: Checkout the nightly commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.init.outputs.sha }}
+
+      - name: Build image
+        uses: home-assistant/builder/actions/build-image@2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            nightly
+            latest
+          labels: |
+            io.hass.type=app
+            io.hass.name=T3 Code (Nightly)
+            io.hass.description=Nightly T3 Code CLI with shared data from the stable T3 Code add-on
+            io.hass.url=https://github.com/marcohald/t3-ha-app
+          push: "true"
+          version: ${{ needs.init.outputs.version }}
+
+  manifest:
+    name: Publish nightly multi-arch manifest
+    needs: [init, test, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            nightly
+            latest
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+
+  verify:
+    name: Verify nightly manifest
+    needs: [init, test, manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - name: Verify both platforms are published
+        env:
+          VERSION: ${{ needs.init.outputs.version }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          printf '%s' "${TOKEN}" | docker login ghcr.io -u "${ACTOR}" --password-stdin >/dev/null
+          for attempt in $(seq 1 40); do
+            if manifest="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>/dev/null)"; then
+              for arch in amd64 arm64; do
+                grep -q "linux/${arch}" <<< "${manifest}" \
+                  || { echo "::error::${IMAGE}:${VERSION} has no linux/${arch} entry"; exit 1; }
+              done
+              echo "Verified ${IMAGE}:${VERSION} (amd64, arm64) - T3 ${{ needs.init.outputs.nightly }}"
+              exit 0
+            fi
+            echo "Waiting for ${IMAGE}:${VERSION} (attempt ${attempt}/40)"
+            sleep 15
+          done
+          exit 1

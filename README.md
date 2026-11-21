@@ -7,7 +7,26 @@
 
   [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmarcohald%2Ft3-ha-app)
   [![Build Add-on Images](https://github.com/marcohald/t3-ha-app/actions/workflows/builder.yaml/badge.svg)](https://github.com/marcohald/t3-ha-app/actions/workflows/builder.yaml)
+  [![Build Nightly Add-on Images](https://github.com/marcohald/t3-ha-app/actions/workflows/builder-nightly.yaml/badge.svg)](https://github.com/marcohald/t3-ha-app/actions/workflows/builder-nightly.yaml)
 </div>
+
+---
+
+## 🅰️ Two add-ons, one data directory
+
+This repository ships two add-ons:
+
+| Add-on | Slug | T3 build | LAN port | Ingress |
+|---|---|---|---|---|
+| **T3 Code** (stable) | `t3-ha-app` | pinned stable (`t3-version.txt`) | 3774 | 62901 |
+| **T3 Code (Nightly)** | `t3-ha-app-nightly` | newest `T3CODE_CHANNEL=nightly` | 3775 | 62902 |
+
+Home Assistant gives every add-on a **private** `/data` volume and always mounts it at `/data`, so two add-ons cannot literally mount the same volume. Both add-ons therefore map the shared `/share` folder and keep their complete persistent state in **`/share/t3-ha-app-data`**, linked into `/data` by `shared-data.sh` on every start. The stable add-on migrates its existing `/data` into that location once. Only `options.json` stays private, because each add-on has its own configuration (ports, channel).
+
+Consequences worth knowing:
+- Sessions, credentials, the HA skill, persistent tools, overlays and the T3 Connect relay marker are identical in both add-ons.
+- Run **one of the two at a time** — they share the same T3 state database, and the nightly uses its own CLI binary from its image so a nightly version can never overwrite the stable pin in the shared volume.
+- Images for both add-ons are built and published by GitHub Actions only. The nightly is rebuilt daily and its add-on version is bumped automatically.
 
 ---
 

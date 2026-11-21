@@ -5,7 +5,10 @@
 set -euo pipefail
 
 IMAGE_TAG="${1:-local/t3-ha-app:test}"
-CONTAINER_NAME="t3-ha-app-ci-test"
+CONTAINER_NAME="${CONTAINER_NAME:-t3-ha-app-ci-test}"
+API_PORT="${API_PORT:-62906}"
+T3_PORT="${T3_PORT:-3774}"
+EXPECT_CHANNEL="${EXPECT_CHANNEL:-stable}"
 
 echo "=== [CI Test] Running integration test on image: ${IMAGE_TAG} ==="
 
@@ -21,7 +24,7 @@ docker run -d \
     --name "${CONTAINER_NAME}" \
     -e SUPERVISOR_TOKEN="test_ci_mock_token" \
     -e HASSIO_TOKEN="test_ci_mock_token" \
-    -p 3774 \
+    -p "${T3_PORT}" \
     "${IMAGE_TAG}"
 
 # 2. Wait up to 30 seconds for ttyd and nginx / upload.py to start
@@ -39,6 +42,13 @@ done
 echo "=== [CI Test] Checking T3 CLI binary and serve process ==="
 docker exec "${CONTAINER_NAME}" /usr/local/bin/t3 --version
 docker exec "${CONTAINER_NAME}" bash -l -c "t3 --version"
+T3_VERSION_STRING=$(docker exec "${CONTAINER_NAME}" /usr/local/bin/t3 --version | tr -d '\r')
+echo "T3 version: ${T3_VERSION_STRING}"
+if [ "${EXPECT_CHANNEL}" = "nightly" ]; then
+    grep -qi 'nightly' <<< "${T3_VERSION_STRING}" || {
+        echo "::error::expected a nightly T3 build, got ${T3_VERSION_STRING}"; exit 1; }
+    echo "✓ Nightly T3 build verified."
+fi
 
 # Verify t3 serve is actually running and did not crash
 sleep 2
@@ -91,11 +101,21 @@ docker exec "${CONTAINER_NAME}" test -f /data/.claude/skills/homeassistant/SKILL
 docker exec "${CONTAINER_NAME}" python3 /opt/t3code/skill/homeassistant/scripts/ha_ws.py --help >/dev/null
 echo "✓ Home Assistant skill verified."
 
+# 6b. Verify /data entries point at the shared data directory
+echo "=== [CI Test] Checking shared data directory ==="
+docker exec "${CONTAINER_NAME}" test -d /share/t3-ha-app-data
+SHARED_TARGET=$(docker exec "${CONTAINER_NAME}" readlink -f /data/.t3)
+if [ "${SHARED_TARGET}" != "/share/t3-ha-app-data/.t3" ]; then
+    echo "::error::/data/.t3 is not linked to the shared data directory: ${SHARED_TARGET}"
+    exit 1
+fi
+echo "✓ Shared data directory verified (${SHARED_TARGET})."
+
 # 7. Check Version Endpoint from upload.py API
 echo "=== [CI Test] Checking /version_check API response ==="
-docker exec "${CONTAINER_NAME}" python3 -c '
-import urllib.request, json
-res = urllib.request.urlopen("http://127.0.0.1:62906/version_check")
+docker exec -e "TEST_API_PORT=${API_PORT}" "${CONTAINER_NAME}" python3 -c '
+import os, urllib.request, json
+res = urllib.request.urlopen("http://127.0.0.1:" + os.environ["TEST_API_PORT"] + "/version_check")
 data = json.loads(res.read().decode())
 print("API Response:", json.dumps(data, indent=2))
 assert data.get("claude_version") not in (None, "not installed", "unknown"), "Claude CLI missing in API"

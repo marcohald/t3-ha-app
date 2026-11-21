@@ -48,6 +48,16 @@ install_version() {
 
 mkdir -p "$DATA_BIN_DIR" "$T3_HOME/runtime/versions"
 
+# The nightly add-on keeps its own T3 CLI binary from its image so its build
+# cannot be replaced by the stable pin in the shared /data volume. All state
+# (T3CODE_HOME) is still shared between the two add-ons.
+if [ "${T3_SKIP_DATA_INSTALL:-0}" = "1" ]; then
+    CURRENT="$(binary_version "$IMAGE_T3")"
+    log "Using the image's T3 CLI (${CURRENT:-unknown}); skipping the shared /data launcher."
+    printf '%s\n' "$IMAGE_T3"
+    exit 0
+fi
+
 PINNED="$(pinned_version)"
 CURRENT="$(binary_version "$DATA_T3")"
 

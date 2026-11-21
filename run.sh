@@ -34,8 +34,20 @@ if [ -f /data/overlay/opt/t3code/html/index.html ]; then
     ln -sf /data/overlay/opt/t3code/html/index.html /opt/t3code/html/index.html
 fi
 
+# Share the complete data directory with the nightly/stable sibling add-on.
+# Must run before anything writes to /data so all persistent state lands in
+# /share/t3-ha-app-data and is linked back into /data.
+/opt/t3code/shared-data.sh || true
+
 # Ensure persistence and working directories exist
 mkdir -p /data/.t3 /data/workspace /homeassistant /var/log/nginx /tmp/uploads
+
+# Internal service ports can be overridden per add-on (the nightly variant
+# uses its own set so both can be installed without clashing).
+API_PORT="${API_PORT:-62906}"
+TTYD_PORT="${TTYD_PORT:-62905}"
+NGINX_PORT="${NGINX_PORT:-62901}"
+export API_PORT TTYD_PORT NGINX_PORT
 
 # ---------------------------------------------------------------------------
 # Persistence: point every package manager at /data and write the agent
@@ -121,8 +133,8 @@ set output-meta on
 set convert-meta off
 INPUTRC_EOF
 
-# Read configured LAN port (default 3774)
-T3_PORT=$(jq -r '.port // 3774' /data/options.json 2>/dev/null || echo "3774")
+# Read configured LAN port (env override wins, then options.json, then 3774)
+T3_PORT="${T3_PORT:-$(jq -r '.port // 3774' /data/options.json 2>/dev/null || echo "3774")}"
 export T3_PORT
 
 # Start T3 Code Server in background on configured LAN port
@@ -179,12 +191,16 @@ echo "T3 Code Server Status & Mobile App Pairing Info:"
 "$T3_BIN" pair || true
 echo "=========================================================="
 
-# Start Python Upload & API server on port 62906
+# Start Python Upload & API server
 python3 /opt/t3code/upload.py &
 
-# Start ttyd on port 62905 connected to attach script
-ttyd -a -b /ttyd -t copyOnSelect=true -t enableZmodem=true -t disableLeaveAlert=true -t disableResizeOverlay=true -t scrollback=10000 -p 62905 /opt/t3code/attach.sh &
+# Start ttyd connected to attach script
+ttyd -a -b /ttyd -t copyOnSelect=true -t enableZmodem=true -t disableLeaveAlert=true -t disableResizeOverlay=true -t scrollback=10000 -p "$TTYD_PORT" /opt/t3code/attach.sh &
 
-# Start NGINX reverse proxy on Ingress port 62901
-echo "Starting NGINX reverse proxy on port 62901..."
-exec nginx -c /etc/nginx/nginx.conf -g "daemon off;"
+# Render the reverse proxy config with this add-on's ports and start NGINX
+sed -e "s/62901/${NGINX_PORT}/g" \
+    -e "s/62905/${TTYD_PORT}/g" \
+    -e "s/62906/${API_PORT}/g" \
+    /etc/nginx/nginx.conf > /tmp/nginx.conf
+echo "Starting NGINX reverse proxy on port ${NGINX_PORT}..."
+exec nginx -c /tmp/nginx.conf -g "daemon off;"
