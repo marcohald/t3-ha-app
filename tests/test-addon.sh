@@ -27,16 +27,27 @@ docker run -d \
     -p "${T3_PORT}" \
     "${IMAGE_TAG}"
 
-# 2. Wait up to 30 seconds for ttyd and nginx / upload.py to start
+# 2. Wait up to 120 seconds for t3 serve, nginx and upload.py to start.
+#    A fresh container downloads and installs the pinned T3 runtime on first
+#    boot, which can take a while on a slow runner.
 echo "=== [CI Test] Waiting for services to initialize ==="
-for i in $(seq 1 30); do
+ready=0
+for i in $(seq 1 120); do
     if docker exec "${CONTAINER_NAME}" pgrep -f "nginx" >/dev/null 2>&1 && \
-       docker exec "${CONTAINER_NAME}" pgrep -f "upload.py" >/dev/null 2>&1; then
-        echo "Core processes (nginx, upload.py) running (attempt $i)."
+       docker exec "${CONTAINER_NAME}" pgrep -f "upload.py" >/dev/null 2>&1 && \
+       docker exec "${CONTAINER_NAME}" pgrep -f "t3 serve" >/dev/null 2>&1; then
+        echo "Core processes (t3 serve, nginx, upload.py) running (attempt $i)."
+        ready=1
         break
     fi
     sleep 1
 done
+if [ "${ready}" -ne 1 ]; then
+    echo "::error::services did not start within 120s"
+    docker logs "${CONTAINER_NAME}" || true
+    docker exec "${CONTAINER_NAME}" cat /data/t3_serve.log 2>/dev/null || true
+    exit 1
+fi
 
 # 3. Verify t3 CLI is present, executable, and matches expected syntax
 echo "=== [CI Test] Checking T3 CLI binary and serve process ==="
