@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.17 (2026-11-22)
+
+- 🔧 **Persist `extra_packages` via Supervisor API**: updated the `linux-packages` skill (`pkgs.py`) to read live options from `GET /addons/self/info` and write `extra_packages` via `POST /addons/self/options` instead of using `/data/.t3/extra-packages.list`, keeping the Home Assistant Configuration UI, backups, and skill in sync while preserving `!secret` references and existing options.
+- ♻️ **Automatic one-time migration**: `install-extra-packages.sh` now fetches live options from the Supervisor API (falling back to `/data/options.json`), migrates any legacy `/data/.t3/extra-packages.list` entries into `extra_packages` via the Supervisor API on startup, and removes the legacy file once migrated.
+- 🏷️ **Same-day nightly version bumps**: `.github/workflows/builder-nightly.yaml` now appends `.1`, `.2`, … on same-day nightly rebuilds (e.g., `0.1.20261122.1`) so Home Assistant always detects new nightly builds.
+
 ## 1.1.16 (2026-11-22)
 
 - 📦 **Extra Linux packages option**: new `extra_packages` add-on setting (list of Debian package names, default empty). `install-extra-packages.sh` runs from `run.sh` on every start and installs only the packages missing in the freshly rebuilt container, so the list is reapplied after every add-on update. It also accepts packages appended by the skill, validates names and logs results to `/data/.t3/extra-packages.log`.

@@ -148,8 +148,9 @@ read-only unless `--allow-write` is passed.
 ### Linux packages skill
 
 A skill named `linux-packages` is installed in the same roots. When a task needs
-an apt package, use it: it installs missing packages immediately and MUST ask
-the user before adding a package to the persistent list that is reinstalled
+an apt package, use it: it installs missing packages immediately and persists
+them to the add-on's `extra_packages` option via the Supervisor API (asking the
+user first unless they explicitly asked to persist it) so they are reinstalled
 after every add-on update. Inspect the current list with:
 
     python3 ~/.claude/skills/linux-packages/scripts/pkgs.py list

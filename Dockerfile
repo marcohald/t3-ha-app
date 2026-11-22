@@ -132,6 +132,7 @@ RUN chmod +x /opt/t3code/attach.sh /opt/t3code/welcome.sh /opt/t3code/persist.sh
         /opt/t3code/skills.sh /opt/t3code/t3-runtime.sh /opt/t3code/t3-relay.sh \
         /opt/t3code/shared-data.sh /opt/t3code/install-extra-packages.sh \
         /opt/t3code/opencode-runtime.sh /opt/t3code/claude-runtime.sh /run.sh \
-        /opt/t3code/skill/homeassistant/scripts/*.py
+        /opt/t3code/skill/homeassistant/scripts/*.py \
+        /opt/t3code/skill/linux-packages/scripts/*.py
 
 CMD [ "/run.sh" ]

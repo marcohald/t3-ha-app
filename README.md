@@ -144,7 +144,7 @@ To connect to your T3 Code instance securely from outside your home network:
 
 The container filesystem is rebuilt on every add-on update, so anything installed with `apt` is lost. List the packages you need in **extra_packages** (Settings → Add-ons → T3 Code → Configuration); `install-extra-packages.sh` runs on every start, checks which ones are actually missing and installs only those. Restarts without changes are a no-op, and results are logged to `/data/.t3/extra-packages.log`.
 
-The bundled **`linux-packages`** skill helps while working in a chat: it can show the current list, reinstall everything after an update, install a package immediately, and — **only after asking you for confirmation** — add it to the persistent skill list at `/data/.t3/extra-packages.list`. That list is merged with the add-on option, so both sources are reinstalled after an update. Use `settings` in the add-on UI to edit the primary list yourself.
+The bundled **`linux-packages`** skill helps while working in a chat: it can show the current list, reinstall everything after an update, install a package immediately, and — **after asking you for confirmation** (unless explicitly requested) — update `extra_packages` directly through the Home Assistant Supervisor API (`POST /addons/self/options`), so changes stay in sync with the Configuration tab and backups. Any legacy `/data/.t3/extra-packages.list` file from earlier builds is automatically migrated into `extra_packages` on startup. Use **Settings** in the add-on UI to edit the list directly as well.
 
 ---
 

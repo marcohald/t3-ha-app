@@ -105,7 +105,108 @@ echo "✓ T3 Connect relay marker verified."
 echo "=== [CI Test] Checking extra-package support ==="
 docker exec "${CONTAINER_NAME}" test -x /opt/t3code/install-extra-packages.sh
 docker exec "${CONTAINER_NAME}" test -f /opt/t3code/skill/linux-packages/SKILL.md
+docker exec "${CONTAINER_NAME}" test -f /data/.claude/skills/linux-packages/SKILL.md
+docker exec "${CONTAINER_NAME}" test -x /opt/t3code/skill/linux-packages/scripts/pkgs.py
 docker exec "${CONTAINER_NAME}" python3 /opt/t3code/skill/linux-packages/scripts/pkgs.py list >/dev/null
+docker exec "${CONTAINER_NAME}" python3 - <<'PY'
+import http.server
+import json
+import os
+import subprocess
+import tempfile
+import threading
+
+STATE = {
+    "options": {
+        "port": 3774,
+        "server_name": "",
+        "ha_token": "",
+        "mqtt_host": "",
+        "mqtt_port": "1883",
+        "mqtt_user": "",
+        "mqtt_pass": "!secret mqtt_pass",
+        "extra_packages": [],
+    },
+    "posts": [],
+}
+
+class MockSupervisor(http.server.BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args):
+        pass
+
+    def _send(self, code, obj):
+        body = json.dumps(obj).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        if self.headers.get("Authorization") != "Bearer test-token":
+            return self._send(401, {"result": "error", "message": "Unauthorized"})
+        if self.path == "/addons/self/info":
+            return self._send(200, {"result": "ok", "data": {"options": STATE["options"]}})
+        return self._send(404, {"result": "error", "message": "Not found"})
+
+    def do_POST(self):
+        if self.headers.get("Authorization") != "Bearer test-token":
+            return self._send(401, {"result": "error", "message": "Unauthorized"})
+        if self.path == "/addons/self/options":
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            STATE["posts"].append(payload)
+            STATE["options"] = dict(payload["options"])
+            return self._send(200, {"result": "ok", "data": {}})
+        return self._send(404, {"result": "error", "message": "Not found"})
+
+srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MockSupervisor)
+port = srv.server_address[1]
+thread = threading.Thread(target=srv.serve_forever, daemon=True)
+thread.start()
+
+try:
+    with tempfile.TemporaryDirectory() as tmp:
+        opts_file = os.path.join(tmp, "options.json")
+        with open(opts_file, "w", encoding="utf-8") as fh:
+            json.dump({"port": 3774, "extra_packages": []}, fh)
+        legacy_file = os.path.join(tmp, "extra-packages.list")
+        log_file = os.path.join(tmp, "extra-packages.log")
+
+        env = dict(
+            os.environ,
+            SUPERVISOR_URL=f"http://127.0.0.1:{port}",
+            SUPERVISOR_TOKEN="test-token",
+            OPTIONS_FILE=opts_file,
+            EXTRA_PACKAGES_LIST=legacy_file,
+            EXTRA_PACKAGES_LOG=log_file,
+        )
+        pkgs_py = "/opt/t3code/skill/linux-packages/scripts/pkgs.py"
+
+        res = subprocess.run(["python3", pkgs_py, "add", "--no-install", "openssh-client"], env=env, capture_output=True, text=True)
+        assert res.returncode == 0, res.stderr
+        res = subprocess.run(["python3", pkgs_py, "add", "--no-install", "htop"], env=env, capture_output=True, text=True)
+        assert res.returncode == 0, res.stderr
+        assert STATE["options"]["extra_packages"] == ["openssh-client", "htop"], STATE["options"]
+        assert STATE["options"]["mqtt_pass"] == "!secret mqtt_pass", STATE["options"]
+
+        res = subprocess.run(["python3", pkgs_py, "list"], env=env, capture_output=True, text=True)
+        assert res.returncode == 0 and "openssh-client" in res.stdout and "htop" in res.stdout, res.stdout
+
+        res = subprocess.run(["python3", pkgs_py, "remove", "openssh-client"], env=env, capture_output=True, text=True)
+        assert res.returncode == 0, res.stderr
+        assert STATE["options"]["extra_packages"] == ["htop"], STATE["options"]
+
+        with open(legacy_file, "w", encoding="utf-8") as fh:
+            fh.write("# legacy list\nbash\n")
+        res = subprocess.run(["/opt/t3code/install-extra-packages.sh"], env=env, capture_output=True, text=True)
+        assert res.returncode == 0, res.stderr
+        assert not os.path.exists(legacy_file), "Legacy list file was not removed after migration"
+        assert STATE["options"]["extra_packages"] == ["htop", "bash"], STATE["options"]
+finally:
+    srv.shutdown()
+    srv.server_close()
+PY
 echo "✓ Extra-package installer and skill verified."
 
 # 5. Verify GitHub CLI (gh) is present

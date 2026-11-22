@@ -51,7 +51,24 @@ jobs:
           [ -n "${nightly}" ] || { echo "::error::No T3 nightly release found"; exit 1; }
           echo "Latest upstream nightly: ${nightly}"
 
-          version="0.1.$(date -u +%Y%m%d)"
+          today="0.1.$(date -u +%Y%m%d)"
+          current="$(sed -n 's/^version: *["'"'"']\?\([^"'"'"']*\)["'"'"']\?/\1/p' t3-ha-app-nightly/config.yaml)"
+          case "${current}" in
+            "${today}")
+              version="${today}.1"
+              ;;
+            "${today}."*)
+              suffix="${current#"${today}."}"
+              if [[ "${suffix}" =~ ^[0-9]+$ ]]; then
+                version="${today}.$((suffix + 1))"
+              else
+                version="${today}.1"
+              fi
+              ;;
+            *)
+              version="${today}"
+              ;;
+          esac
           echo "nightly=${nightly#v}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 

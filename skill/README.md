@@ -24,8 +24,10 @@ runs with access to the Home Assistant API.
 ## Install at runtime
 
 `linux-packages/` is maintained in this repository: it lets an agent install
-missing apt packages and, after asking the user, persist them in the add-on's
-extra-package list so they are reinstalled after every update.
+missing apt packages and, after asking the user (unless explicitly requested),
+persist them directly to the add-on's `extra_packages` option via the
+Supervisor API (`POST /addons/self/options`) so they are reinstalled after every
+update.
 
 `skills.sh` (copied to `/opt/t3code/skills.sh`) installs **all** bundled skills
 into the persistent `/data` volume on every container start, so they survive
