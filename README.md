@@ -19,13 +19,15 @@ This repository ships two add-ons:
 | Add-on | Slug | T3 build | LAN port | Ingress |
 |---|---|---|---|---|
 | **T3 Code** (stable) | `t3-ha-app` | pinned stable (`t3-version.txt`) | 3774 | 62901 |
-| **T3 Code (Nightly)** | `t3-ha-app-nightly` | newest `T3CODE_CHANNEL=nightly` | 3775 | 62902 |
+| **T3 Code (Nightly)** | `t3-ha-app-nightly` | newest `T3CODE_CHANNEL=nightly` | 3774 | 62901 |
 
-Home Assistant gives every add-on a **private** `/data` volume and always mounts it at `/data`, so two add-ons cannot literally mount the same volume. Both add-ons therefore map the shared `/share` folder and keep their complete persistent state in **`/share/t3-ha-app-data`**, linked into `/data` by `shared-data.sh` on every start. The stable add-on migrates its existing `/data` into that location once. Only `options.json` stays private, because each add-on has its own configuration (ports, channel).
+Both add-ons use the **same ports** (and the same shared data), so the nightly is a drop-in replacement: stop the stable add-on before starting the nightly.
+
+Home Assistant gives every add-on a **private** `/data` volume and always mounts it at `/data`, so two add-ons cannot literally mount the same volume. Both add-ons therefore map the shared `/share` folder and keep their complete persistent state in **`/share/t3-ha-app-data`**, linked into `/data` by `shared-data.sh` on every start. The stable add-on migrates its existing `/data` into that location once. Only `options.json` stays private, because each add-on has its own configuration.
 
 Consequences worth knowing:
 - Sessions, credentials, the HA skill, persistent tools, overlays and the T3 Connect relay marker are identical in both add-ons.
-- Run **one of the two at a time** — they share the same T3 state database, and the nightly uses its own CLI binary from its image so a nightly version can never overwrite the stable pin in the shared volume.
+- Run **one of the two at a time** — they share the same T3 state database and the same ports, and the nightly uses its own CLI binary from its image so a nightly version can never overwrite the stable pin in the shared volume.
 - Images for both add-ons are built and published by GitHub Actions only. The nightly is rebuilt daily and its add-on version is bumped automatically.
 
 ---

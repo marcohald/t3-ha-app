@@ -98,8 +98,8 @@ jobs:
       - name: Run Integration Tests
         env:
           EXPECT_CHANNEL: nightly
-          API_PORT: "62907"
-          T3_PORT: "3775"
+          API_PORT: "62906"
+          T3_PORT: "3774"
           CONTAINER_NAME: t3-ha-app-nightly-ci-test
         run: |
           ./tests/test-addon.sh "local/t3-ha-app-nightly:test"

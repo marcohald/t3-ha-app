@@ -34,10 +34,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     T3_ADDON_VERSION="${BUILD_VERSION}" \
     T3_CHANNEL=nightly \
     T3_SKIP_DATA_INSTALL=1 \
-    API_PORT=62907 \
-    TTYD_PORT=62908 \
-    NGINX_PORT=62902 \
-    T3_PORT=3775 \
+    API_PORT=62906 \
+    TTYD_PORT=62905 \
+    NGINX_PORT=62901 \
+    T3_PORT=3774 \
     PATH="/data/tools/bin:/data/.local/bin:/usr/local/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

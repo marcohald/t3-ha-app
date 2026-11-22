@@ -15,7 +15,7 @@ hassio_role: manager
 homeassistant_api: true
 host_network: true
 ingress: true
-ingress_port: 62902
+ingress_port: 62901
 panel_admin: false
 icon: true
 logo: true
@@ -23,11 +23,11 @@ map:
   - homeassistant_config:rw
   - share:rw
 ports:
-  3775/tcp: 3775
+  3774/tcp: 3774
 ports_description:
-  3775/tcp: "Nightly T3 Code server (LAN & Mobile App Pairing)"
+  3774/tcp: "T3 Code server (LAN & Mobile App Pairing)"
 options:
-  port: 3775
+  port: 3774
   server_name: ""
   ha_token: ""
   mqtt_host: ""

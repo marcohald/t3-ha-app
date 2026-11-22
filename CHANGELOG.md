@@ -4,7 +4,7 @@
 
 - 🅰️ **Second add-on: T3 Code (Nightly)** (`t3-ha-app-nightly`) with the newest `T3CODE_CHANNEL=nightly` build, rebuilt and published daily by `.github/workflows/builder-nightly.yaml` (amd64/aarch64 + multi-arch manifest, verified before handoff).
 - 🗂️ **Shared data directory**: both add-ons keep their complete persistent state in `/share/t3-ha-app-data` (linked into `/data` by the new `shared-data.sh`); the nightly has no private data of its own, and the stable add-on migrates its existing `/data` once. `options.json` remains per-add-on.
-- 🔀 **Non-conflicting ports**: internal API/ttyd/nginx ports are now configurable (`API_PORT`, `TTYD_PORT`, `NGINX_PORT`); the nightly uses 3775 / 62907 / 62908 / 62902.
+- 🔀 **Shared defaults**: internal API/ttyd/nginx ports are configurable (`API_PORT`, `TTYD_PORT`, `NGINX_PORT`), with the nightly using the same defaults as the stable add-on (3774 / 62906 / 62905 / 62901) so it is a drop-in replacement.
 
 ## 1.1.14 (2026-11-21)
 
