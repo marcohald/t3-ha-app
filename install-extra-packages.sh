@@ -9,15 +9,12 @@
 # The single source of truth is the add-on option `extra_packages` (visible in
 # Settings -> Add-ons -> T3 Code -> Configuration). The `linux-packages` skill
 # writes to the same option via the Supervisor API (`POST /addons/self/options`),
-# so both the UI and the skill stay in sync. Any legacy `/data/.t3/extra-packages.list`
-# file is automatically migrated once into `extra_packages` via the API.
+# so both the UI and the skill stay in sync.
 set -u
 
 OPTIONS_FILE="${OPTIONS_FILE:-/data/options.json}"
-LEGACY_LIST_FILE="${EXTRA_PACKAGES_LIST:-/data/.t3/extra-packages.list}"
 LOG="${EXTRA_PACKAGES_LOG:-/data/.t3/extra-packages.log}"
 SUPERVISOR_URL="${SUPERVISOR_URL:-http://supervisor}"
-PKGS_PY="${PKGS_PY:-/opt/t3code/skill/linux-packages/scripts/pkgs.py}"
 HA_TOKEN_FILE="${HA_TOKEN_FILE:-/data/.t3/ha.token}"
 
 log() { echo "[Extra Packages] $*" >&2; }
@@ -25,37 +22,6 @@ log() { echo "[Extra Packages] $*" >&2; }
 valid_name() {
     [[ "$1" =~ ^[a-zA-Z0-9][a-zA-Z0-9+.-]*$ ]]
 }
-
-# One-time migration of legacy /data/.t3/extra-packages.list into extra_packages.
-legacy_args=()
-if [ -f "$LEGACY_LIST_FILE" ]; then
-    legacy_raw="$(
-        grep -vE '^[[:space:]]*(#|$)' "$LEGACY_LIST_FILE" 2>/dev/null \
-          | tr -d '\r' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
-          | grep -v '^$' | sort -u || true
-    )"
-    legacy_pkgs=""
-    while IFS= read -r pkg; do
-        [ -n "$pkg" ] || continue
-        if valid_name "$pkg"; then
-            legacy_pkgs="${legacy_pkgs:+${legacy_pkgs} }${pkg}"
-            legacy_args+=("$pkg")
-        else
-            log "Ignoring invalid legacy package name: ${pkg}"
-        fi
-    done <<< "$legacy_raw"
-
-    if [ "${#legacy_args[@]}" -gt 0 ]; then
-        if [ -f "$PKGS_PY" ] && python3 "$PKGS_PY" add --no-install "${legacy_args[@]}" >/dev/null 2>&1; then
-            rm -f "$LEGACY_LIST_FILE"
-            log "Migrated legacy ${LEGACY_LIST_FILE} into add-on option extra_packages: ${legacy_pkgs}"
-        else
-            log "Warning: could not migrate legacy ${LEGACY_LIST_FILE} via Supervisor API; keeping file."
-        fi
-    else
-        rm -f "$LEGACY_LIST_FILE"
-    fi
-fi
 
 # Prefer live Supervisor options so API updates made without a restart take
 # effect immediately, falling back to /data/options.json if unreachable.
@@ -80,9 +46,6 @@ if [ "$api_ok" -eq 1 ]; then
     desired_raw="$api_packages"
 else
     desired_raw="$(jq -r '.extra_packages[]? // empty' "$OPTIONS_FILE" 2>/dev/null || true)"
-fi
-if [ "${#legacy_args[@]}" -gt 0 ]; then
-    desired_raw="${desired_raw}"$'\n'"$(printf '%s\n' "${legacy_args[@]}")"
 fi
 
 # Strip whitespace, validate, and de-duplicate.

@@ -170,7 +170,6 @@ try:
         opts_file = os.path.join(tmp, "options.json")
         with open(opts_file, "w", encoding="utf-8") as fh:
             json.dump({"port": 3774, "extra_packages": []}, fh)
-        legacy_file = os.path.join(tmp, "extra-packages.list")
         log_file = os.path.join(tmp, "extra-packages.log")
 
         env = dict(
@@ -178,7 +177,6 @@ try:
             SUPERVISOR_URL=f"http://127.0.0.1:{port}",
             SUPERVISOR_TOKEN="test-token",
             OPTIONS_FILE=opts_file,
-            EXTRA_PACKAGES_LIST=legacy_file,
             EXTRA_PACKAGES_LOG=log_file,
         )
         pkgs_py = "/opt/t3code/skill/linux-packages/scripts/pkgs.py"
@@ -197,12 +195,10 @@ try:
         assert res.returncode == 0, res.stderr
         assert STATE["options"]["extra_packages"] == ["htop"], STATE["options"]
 
-        with open(legacy_file, "w", encoding="utf-8") as fh:
-            fh.write("# legacy list\nbash\n")
+        STATE["options"]["extra_packages"] = ["bash"]
         res = subprocess.run(["/opt/t3code/install-extra-packages.sh"], env=env, capture_output=True, text=True)
         assert res.returncode == 0, res.stderr
-        assert not os.path.exists(legacy_file), "Legacy list file was not removed after migration"
-        assert STATE["options"]["extra_packages"] == ["htop", "bash"], STATE["options"]
+        assert "All configured packages are already installed." in res.stderr, res.stderr
 finally:
     srv.shutdown()
     srv.server_close()

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.20261122.2 (2026-11-22)
+
+- 🧹 Remove unused legacy `/data/.t3/extra-packages.list` migration code from `install-extra-packages.sh`.
+
 ## 0.1.20261122.1 (2026-11-22)
 
 - 🔧 Persist `extra_packages` directly to the add-on's Supervisor options (`POST /addons/self/options`), auto-migrate any legacy `/data/.t3/extra-packages.list`, and increment same-day nightly versions cleanly.

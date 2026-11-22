@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.18 (2026-11-22)
+
+- 🧹 **Remove legacy list migration**: removed the unused one-time `/data/.t3/extra-packages.list` migration code from `install-extra-packages.sh`; `extra_packages` in Home Assistant add-on options is the sole configuration source.
+
 ## 1.1.17 (2026-11-22)
 
 - 🔧 **Persist `extra_packages` via Supervisor API**: updated the `linux-packages` skill (`pkgs.py`) to read live options from `GET /addons/self/info` and write `extra_packages` via `POST /addons/self/options` instead of using `/data/.t3/extra-packages.list`, keeping the Home Assistant Configuration UI, backups, and skill in sync while preserving `!secret` references and existing options.
