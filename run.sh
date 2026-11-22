@@ -42,8 +42,11 @@ fi
 # Ensure persistence and working directories exist
 mkdir -p /data/.t3 /data/workspace /homeassistant /var/log/nginx /tmp/uploads
 
-# Internal service ports can be overridden per add-on (the nightly variant
-# uses its own set so both can be installed without clashing).
+# Reinstall user-configured apt packages. An add-on update rebuilds the
+# container, so this runs on every start and installs only what is missing.
+/opt/t3code/install-extra-packages.sh || true
+
+# Internal service ports can be overridden per add-on if needed.
 API_PORT="${API_PORT:-62906}"
 TTYD_PORT="${TTYD_PORT:-62905}"
 NGINX_PORT="${NGINX_PORT:-62901}"

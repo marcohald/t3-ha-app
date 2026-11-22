@@ -90,6 +90,13 @@ docker exec "${CONTAINER_NAME}" /opt/t3code/t3-relay.sh was-connected
 docker exec "${CONTAINER_NAME}" /opt/t3code/t3-relay.sh forget
 echo "✓ T3 Connect relay marker verified."
 
+# 4d. Verify extra-package installer and the linux-packages skill
+echo "=== [CI Test] Checking extra-package support ==="
+docker exec "${CONTAINER_NAME}" test -x /opt/t3code/install-extra-packages.sh
+docker exec "${CONTAINER_NAME}" test -f /opt/t3code/skill/linux-packages/SKILL.md
+docker exec "${CONTAINER_NAME}" python3 /opt/t3code/skill/linux-packages/scripts/pkgs.py list >/dev/null
+echo "✓ Extra-package installer and skill verified."
+
 # 5. Verify GitHub CLI (gh) is present
 echo "=== [CI Test] Checking GitHub CLI ==="
 docker exec "${CONTAINER_NAME}" gh --version

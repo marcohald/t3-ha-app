@@ -1,17 +1,15 @@
 #!/bin/bash
-# Install the Home Assistant skill into every T3 agent skill root.
+# Install all bundled skills into every T3 agent skill root.
 #
-#   skills.sh              install the copy bundled in the image (default)
-#   skills.sh --github     fetch the newest upstream revision first, then install
+#   skills.sh              install the copies bundled in the image (default)
+#   skills.sh --github     fetch the newest upstream HA skill first, then install
 #
-# The skill ships in the image at /opt/t3code/skill/homeassistant (vendored
-# from https://github.com/marcohald/ha-agent-skill). Agents read skills from
-# $HOME, which is /data, so the skill is copied there on every start: it is
-# present for every provider T3 Code can drive, and a container rebuild never
-# leaves an agent without it.
+# Skills ship in the image at /opt/t3code/skill/<name> and are copied to $HOME
+# (/data), which survives add-on updates. Each provider root links back to the
+# single installed copy, so there is exactly one place to update.
 set -e
 
-BUNDLED_SRC="/opt/t3code/skill/homeassistant"
+BUNDLED_ROOT="/opt/t3code/skill"
 SKILL_ROOT="/data/.claude/skills"
 HOME_DIR="${HOME:-/data}"
 UPSTREAM_REPO="${UPSTREAM_REPO:-https://github.com/marcohald/ha-agent-skill.git}"
@@ -23,7 +21,6 @@ case "${1:-}" in
     *) echo "[Skills] Unknown option: $1" >&2; exit 2 ;;
 esac
 
-SRC="${BUNDLED_SRC}"
 WORK=""
 cleanup() {
     # Keep the exit status of the script: a bare `[ -n ] && rm` here would
@@ -34,44 +31,54 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Optionally fetch the newest upstream revision of the HA skill only.
+HA_SOURCE="${BUNDLED_ROOT}/homeassistant"
 if [ "${USE_GITHUB}" = "1" ]; then
     WORK="$(mktemp -d)"
     if git clone --quiet --depth 1 "${UPSTREAM_REPO}" "${WORK}/upstream" 2>/dev/null; then
-        # Only SKILL.md, README.md, scripts/ and references/ are installed;
-        # upstream's tests/ and eval/ are development material.
         mkdir -p "${WORK}/skill"
         cp "${WORK}/upstream/SKILL.md" "${WORK}/upstream/README.md" "${WORK}/skill/" 2>/dev/null || true
         cp -r "${WORK}/upstream/scripts" "${WORK}/upstream/references" "${WORK}/skill/" 2>/dev/null || true
         if [ -f "${WORK}/skill/SKILL.md" ]; then
-            SRC="${WORK}/skill"
+            HA_SOURCE="${WORK}/skill"
             echo "[Skills] Fetched the latest skill from ${UPSTREAM_REPO}"
             if command -v git >/dev/null 2>&1; then
                 echo "[Skills] Upstream revision: $(git -C "${WORK}/upstream" rev-parse HEAD)"
             fi
         else
             echo "[Skills] Upstream checkout looks incomplete; using the bundled copy." >&2
-            SRC="${BUNDLED_SRC}"
         fi
     else
         echo "[Skills] Could not reach ${UPSTREAM_REPO}; using the bundled copy." >&2
-        SRC="${BUNDLED_SRC}"
     fi
 fi
 
-if [ ! -f "${SRC}/SKILL.md" ]; then
-    echo "[Skills] No skill source available at ${SRC}; skipping." >&2
+mkdir -p "${SKILL_ROOT}"
+INSTALLED=""
+
+for candidate in "${BUNDLED_ROOT}"/*; do
+    [ -d "${candidate}" ] || continue
+    name="$(basename "${candidate}")"
+    [ -f "${candidate}/SKILL.md" ] || continue
+
+    src="${candidate}"
+    [ "${name}" = "homeassistant" ] && src="${HA_SOURCE}"
+    [ -f "${src}/SKILL.md" ] || { echo "[Skills] No SKILL.md for ${name}; skipping." >&2; continue; }
+
+    # Copy (not link) so an agent writing inside the skill can never touch the
+    # read-only image layer, and a rebuild can never leave a dangling link.
+    rm -rf "${SKILL_ROOT}/${name}"
+    cp -r "${src}" "${SKILL_ROOT}/${name}"
+    chmod +x "${SKILL_ROOT}/${name}"/scripts/*.py 2>/dev/null || true
+    INSTALLED="${INSTALLED} ${name}"
+done
+
+if [ -z "${INSTALLED}" ]; then
+    echo "[Skills] No skills found under ${BUNDLED_ROOT}." >&2
     exit 1
 fi
 
-# Copy (not link) so an agent writing inside the skill can never touch the
-# read-only image layer, and a rebuild can never leave a dangling link.
-mkdir -p "${SKILL_ROOT}"
-rm -rf "${SKILL_ROOT}/homeassistant"
-cp -r "${SRC}" "${SKILL_ROOT}/homeassistant"
-chmod +x "${SKILL_ROOT}/homeassistant"/scripts/*.py 2>/dev/null || true
-
-# Other providers read their own roots. Link them at the single installed copy
-# so there is exactly one place to update. Existing entries are left alone.
+# Other providers read their own roots. Link each installed skill there.
 for root in \
     "${HOME_DIR}/.codex/skills" \
     "${HOME_DIR}/.config/opencode/skills" \
@@ -79,15 +86,17 @@ for root in \
     "${HOME_DIR}/.claw/skills" \
     "${HOME_DIR}/.gemini/config/skills" \
     "${HOME_DIR}/.gemini/antigravity-cli/skills"; do
-    [ -e "${root}/homeassistant" ] && continue
-    mkdir -p "${root}"
-    ln -s "${SKILL_ROOT}/homeassistant" "${root}/homeassistant" 2>/dev/null || true
+    [ -d "${root}" ] || mkdir -p "${root}"
+    for name in ${INSTALLED}; do
+        [ -e "${root}/${name}" ] && continue
+        ln -s "${SKILL_ROOT}/${name}" "${root}/${name}" 2>/dev/null || true
+    done
 done
 
-# The skill's WebSocket commands need the `websockets` package; the REST and
+# The HA skill's WebSocket commands need the `websockets` package; its REST and
 # render commands work with the standard library alone.
 if ! python3 -c 'import websockets' >/dev/null 2>&1; then
-    echo "[Skills] Note: python 'websockets' missing; only REST commands will work."
+    echo "[Skills] Note: python 'websockets' missing; only HA REST commands will work."
 fi
 
-echo "[Skills] Installed homeassistant skill at ${SKILL_ROOT}/homeassistant"
+echo "[Skills] Installed skills:${INSTALLED}"

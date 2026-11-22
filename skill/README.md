@@ -1,6 +1,6 @@
-# Vendored skill: homeassistant
+# Bundled skills
 
-`homeassistant/` is a vendored copy of
+- `homeassistant/` is a vendored copy of
 <https://github.com/marcohald/ha-agent-skill> (upstream commit
 `a1711ee948dfd6e9e1807ac3a05d6b0bdaba31f1`), pinned so an add-on build never
 depends on GitHub being reachable and never picks up an unreviewed upstream
@@ -23,8 +23,12 @@ runs with access to the Home Assistant API.
 
 ## Install at runtime
 
-`skills.sh` (copied to `/opt/t3code/skills.sh`) installs this copy into the
-persistent `/data` volume on every container start, so the skill survives
+`linux-packages/` is maintained in this repository: it lets an agent install
+missing apt packages and, after asking the user, persist them in the add-on's
+extra-package list so they are reinstalled after every update.
+
+`skills.sh` (copied to `/opt/t3code/skills.sh`) installs **all** bundled skills
+into the persistent `/data` volume on every container start, so they survive
 add-on updates:
 
 | Provider    | Directory                                          |

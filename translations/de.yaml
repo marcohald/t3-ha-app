@@ -20,3 +20,6 @@ configuration:
   mqtt_pass:
     name: "MQTT Passwort"
     description: "Passwort für den MQTT-Broker."
+  extra_packages:
+    name: "Zusätzliche Linux-Pakete"
+    description: "Debian-Paketnamen, die nach jedem Add-on-Update installiert werden (z. B. openssh-client). Bereits vorhandene Pakete werden übersprungen."

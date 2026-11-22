@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.16 (2026-11-22)
+
+- 📦 **Extra Linux packages option**: new `extra_packages` add-on setting (list of Debian package names, default empty). `install-extra-packages.sh` runs from `run.sh` on every start and installs only the packages missing in the freshly rebuilt container, so the list is reapplied after every add-on update. It also accepts packages appended by the skill, validates names and logs results to `/data/.t3/extra-packages.log`.
+- 🛠️ **New `linux-packages` skill**: can `list`, `ensure`, `add` and `remove` packages, reinstall everything after an update, and — by instruction — always asks for confirmation before persisting a package to `/data/.t3/extra-packages.list`. Installed into all agent skill roots by the updated `skills.sh`.
+
 ## 1.1.15 (2026-11-21)
 
 - 🅰️ **Second add-on: T3 Code (Nightly)** (`t3-ha-app-nightly`) with the newest `T3CODE_CHANNEL=nightly` build, rebuilt and published daily by `.github/workflows/builder-nightly.yaml` (amd64/aarch64 + multi-arch manifest, verified before handoff).

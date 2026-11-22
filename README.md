@@ -138,6 +138,13 @@ To connect to your T3 Code instance securely from outside your home network:
 | `mqtt_port` | string | `1883` | MQTT Broker port. |
 | `mqtt_user` | string | *empty* | MQTT username. |
 | `mqtt_pass` | password | *empty* | MQTT password. |
+| `extra_packages` | list of strings | *empty* | Debian package names to install after every add-on update, e.g. `openssh-client`. Packages already present are skipped. |
+
+### Extra Linux packages
+
+The container filesystem is rebuilt on every add-on update, so anything installed with `apt` is lost. List the packages you need in **extra_packages** (Settings → Add-ons → T3 Code → Configuration); `install-extra-packages.sh` runs on every start, checks which ones are actually missing and installs only those. Restarts without changes are a no-op, and results are logged to `/data/.t3/extra-packages.log`.
+
+The bundled **`linux-packages`** skill helps while working in a chat: it can show the current list, reinstall everything after an update, install a package immediately, and — **only after asking you for confirmation** — add it to the persistent skill list at `/data/.t3/extra-packages.list`. That list is merged with the add-on option, so both sources are reinstalled after an update. Use `settings` in the add-on UI to edit the primary list yourself.
 
 ---
 

@@ -144,6 +144,15 @@ automations, or energy configuration. Confirm access first:
 `HA_URL` and `HA_TOKEN_FILE` are already exported in this environment (the
 token is the Supervisor token, rewritten on every start). The scripts are
 read-only unless `--allow-write` is passed.
+
+### Linux packages skill
+
+A skill named `linux-packages` is installed in the same roots. When a task needs
+an apt package, use it: it installs missing packages immediately and MUST ask
+the user before adding a package to the persistent list that is reinstalled
+after every add-on update. Inspect the current list with:
+
+    python3 ~/.claude/skills/linux-packages/scripts/pkgs.py list
 {END}
 """
 

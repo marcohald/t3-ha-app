@@ -1,0 +1,25 @@
+configuration:
+  port:
+    name: "T3 Server Port"
+    description: "LAN-Port des T3 Code Servers für lokale Netzwerkverbindung und Kopplung mit der mobilen App."
+  server_name:
+    name: "Server- / Add-on-Name"
+    description: "Benutzerdefinierter Anzeigename für den T3 Code Server. Wenn leer gelassen, wird standardmäßig der Home Assistant FQDN verwendet."
+  ha_token:
+    name: "Langlebiger Home Assistant Zugriffstoken"
+    description: "Optionales Token für den Zugriff auf die Home Assistant Core API via MCP."
+  mqtt_host:
+    name: "MQTT Broker Host"
+    description: "Hostname oder IP-Adresse des MQTT-Brokers (z.B. core-mosquitto) für Zigbee2MQTT MCP."
+  mqtt_port:
+    name: "MQTT Broker Port"
+    description: "Port des MQTT-Brokers (Standard: 1883)."
+  mqtt_user:
+    name: "MQTT Benutzername"
+    description: "Benutzername für den MQTT-Broker."
+  mqtt_pass:
+    name: "MQTT Passwort"
+    description: "Passwort für den MQTT-Broker."
+  extra_packages:
+    name: "Zusätzliche Linux-Pakete"
+    description: "Debian-Paketnamen, die nach jedem Add-on-Update installiert werden (z. B. openssh-client). Bereits vorhandene Pakete werden übersprungen."
