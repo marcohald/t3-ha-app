@@ -1,6 +1,6 @@
 name: "T3 Code (Nightly)"
 description: "Nightly T3 Code CLI with shared data from the stable T3 Code add-on"
-version: "0.1.20261123"
+version: "0.1.20261124"
 slug: "t3-ha-app-nightly"
 url: "https://github.com/marcohald/t3-ha-app"
 image: "ghcr.io/marcohald/t3-ha-app-nightly"
