@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.19 (2026-11-24)
+
+- ⚡ **OpenCode CLI bumped to 2.4.1** (previously 2.3.2).
+- Upstream highlights: Highlights
+
 ## 1.1.18 (2026-11-22)
 
 - 🧹 **Remove legacy list migration**: removed the unused one-time `/data/.t3/extra-packages.list` migration code from `install-extra-packages.sh`; `extra_packages` in Home Assistant add-on options is the sole configuration source.
