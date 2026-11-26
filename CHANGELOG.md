@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.20 (2026-11-26)
+
+- ⚡ **OpenCode CLI bumped to 2.4.2** (previously 2.4.1).
+- Upstream highlights: Highlights
+
 ## 1.1.19 (2026-11-24)
 
 - ⚡ **OpenCode CLI bumped to 2.4.1** (previously 2.3.2).
